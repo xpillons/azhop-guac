@@ -3,3 +3,4 @@ modules
 logs
 scalelib.lock
 nodehistory.db
+*.pyc
