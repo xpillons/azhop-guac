@@ -1,0 +1,7 @@
+{
+    // Specify .env file location in the root folder of your workspace
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.analysis.extraPaths": [
+        "./modules/cyclecloud-scalelib/src"
+    ]
+}
