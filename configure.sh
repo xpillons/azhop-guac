@@ -16,6 +16,7 @@ pip install -U pip
 pip install wheel
 pip install -r modules/cyclecloud-scalelib/dev-requirements.txt
 pip install ./libs/cyclecloud_api-8.1.0-py2.py3-none-any.whl 
+pip install mysql-connector-python==8.0.26
 
 export AUTOSCALE_HOME=$(pwd)
 

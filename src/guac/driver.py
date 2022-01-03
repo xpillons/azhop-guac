@@ -15,6 +15,8 @@ from hpc.autoscale import hpctypes as ht
 from hpc.autoscale.job.nodequeue import NodeQueue
 from hpc.autoscale.job.schedulernode import SchedulerNode
 
+from guac.database import GuacDatabase, GuacConnectionStates
+
 class GuacDriver(SchedulerDriver):
     """
     The main interface for interacting with Guacamole and also
@@ -23,12 +25,12 @@ class GuacDriver(SchedulerDriver):
 
     def __init__(
         self,
-#        pbscmd: Optional[PBSCMD] = None,
+        guacdb: Optional[GuacDatabase] = None,
 #        resource_definitions: Optional[Dict[str, PBSProResourceDefinition]] = None,
         down_timeout: int = 300,
     ) -> None:
         super().__init__("guac")
-#        self.pbscmd = pbscmd or PBSCMD(get_pbspro_parser())
+        self.guacdb = guacdb # or PBSCMD(get_pbspro_parser())
 #        self.__queues: Optional[Dict[str, PBSProQueue]] = None
         self.__shared_resources: Optional[Dict[str, SharedResource]]
 #        self.__resource_definitions = resource_definitions
@@ -149,12 +151,13 @@ class GuacDriver(SchedulerDriver):
             if not node.hostname:
                 continue
 
-            if not self._validate_reverse_dns(node):
-                logging.fine(
-                    "%s still has a hostname that can not be looked via reverse dns. This should repair itself.",
-                    node,
-                )
-                continue
+            # TODO: Add a parameter to turn on reverse DNS testing
+            # if not self._validate_reverse_dns(node):
+            #     logging.fine(
+            #         "%s still has a hostname that can not be looked via reverse dns. This should repair itself.",
+            #         node,
+            #     )
+            #     continue
 
             if not node.resources.get("ccnodeid"):
                 logging.info(
@@ -163,81 +166,15 @@ class GuacDriver(SchedulerDriver):
                 )
                 continue
             try:
-                try:
-                    ndicts = self.pbscmd.qmgr_parsed("list", "node", node.hostname)
-                    if ndicts and ndicts[0].get("ccnodeid"):
-                        logging.info(
-                            "ccnodeid is already defined on %s. Skipping", node
-                        )
-                        continue
-                    # TODO RDH should we just delete it instead?
-                    logging.info(
-                        "%s already exists in this cluster. Setting resources.", node
-                    )
-                except CalledProcessError:
-                    logging.info(
-                        "%s does not exist in this cluster yet. Creating.", node
-                    )
-                    self.pbscmd.qmgr("create", "node", node.hostname)
-
-                for res_name, res_value in node.resources.items():
-                    # we set ccnodeid last, so that we can see that we have completely joined a node
-                    # if and only if ccnodeid has been set
-                    if res_name == "ccnodeid":
-                        continue
-
-                    if res_value is None:
-                        continue
-
-                    # TODO RDH track down
-                    if res_name == "group_id" and res_value == "None":
-                        continue
-
-                    # skip things like host which are useful to set default resources on non-existent
-                    # nodes for autoscale packing, but not on actual nodes
-                    if res_name in self.read_only_resources:
-                        continue
-
-                    if res_name not in self.resource_definitions:
-                        # TODO bump to a warning?
-                        logging.fine(
-                            "%s is an unknown PBS resource for node %s. Skipping this resource",
-                            res_name,
-                            node,
-                        )
-                        continue
-                    res_value_str: str
-
-                    # pbs size does not support decimals
-                    if isinstance(res_value, ht.Size):
-                        res_value_str = "{}{}".format(
-                            int(res_value.value), res_value.magnitude
-                        )
-                    elif isinstance(res_value, bool):
-                        res_value_str = "1" if bool else "0"
-                    else:
-                        res_value_str = str(res_value)
-
-                    self.pbscmd.qmgr(
-                        "set",
-                        "node",
-                        node.hostname,
-                        "resources_available.{}={}".format(res_name, res_value_str),
-                    )
-
-                self.pbscmd.qmgr(
-                    "set",
-                    "node",
-                    node.hostname,
-                    "resources_available.{}={}".format(
-                        "ccnodeid", node.resources["ccnodeid"]
-                    ),
-                )
-                self.pbscmd.pbsnodes("-r", node.hostname)
-                ret.append(node)
-            except SubprocessError as e:
+                if len(node.assignments):
+                    job_id=int(next(iter(node.assignments)))
+                    self.guacdb.assign_connection_to_host(job_id, node.hostname)
+                    self.guacdb.update_connection_status(job_id, GuacConnectionStates.Assigned)
+                    self.guacdb.update_connection_nodeid(job_id, node.resources["ccnodeid"])
+                    ret.append(node)
+            except Exception as e:
                 logging.error(
-                    "Could not fully add %s to cluster: %s. Will attempt next cycle",
+                    "Could not assign %s to connection: %s. Will attempt next cycle",
                     node,
                     e,
                 )
@@ -254,6 +191,7 @@ class GuacDriver(SchedulerDriver):
         # TODO batch these up, but keep it underneath the
         # max arg limit
         ret = []
+        return ret
         for node in nodes:
             if not node.hostname:
                 logging.info("Node %s has no hostname.", node)
@@ -325,34 +263,6 @@ class GuacDriver(SchedulerDriver):
                 )
         return ret
 
-    def new_node_queue(self, config: Dict) -> NodeQueue:
-        return NodeQueue()
-
-    # @lru_cache(1)
-    # def read_schedulers(self) -> Dict[str, PBSProScheduler]:
-    #     return read_schedulers(self.pbscmd, self.resource_definitions)
-
-    # @lru_cache(1)
-    # def read_default_scheduler(self) -> PBSProScheduler:
-    #     schedulers = self.read_schedulers()
-
-    #     for sched in schedulers.values():
-    #         if sched.is_default:
-    #             return sched
-
-    #     raise RuntimeError("No default scheduler found!")
-
-    # def read_queues(
-    #     self, shared_resources: Dict[str, SharedResource]
-    # ) -> Dict[str, PBSProQueue]:
-    #     if self.__queues is None:
-    #         self.__shared_resources = shared_resources
-    #         self.__queues = read_queues(
-    #             self.pbscmd, self.resource_definitions, shared_resources
-    #         )
-    #     assert shared_resources == self.__shared_resources
-    #     return self.__queues
-
     def parse_jobs(
         self,
 #        queues: Dict[str, PBSProQueue],
@@ -362,7 +272,7 @@ class GuacDriver(SchedulerDriver):
 
         if force or self.__jobs_cache is None:
             self.__jobs_cache = parse_jobs(
-#                self.pbscmd, self.resource_definitions, queues, resources_for_scheduling
+                self.guacdb #, self.resource_definitions, queues, resources_for_scheduling
             )
 
         return self.__jobs_cache
@@ -385,7 +295,7 @@ class GuacDriver(SchedulerDriver):
     ) -> List[Node]:
         if force or self.__scheduler_nodes_cache is None:
             self.__scheduler_nodes_cache = parse_scheduler_nodes(
-#                self.pbscmd, self.resource_definitions
+                self.guacdb #, self.resource_definitions
             )
         return self.__scheduler_nodes_cache
 
@@ -434,249 +344,91 @@ class GuacDriver(SchedulerDriver):
     def __repr__(self) -> str:
         return "GuacDriver(res_def={})".format(self.resource_definitions)
 
-
-# class PBSProNodeQueue(NodeQueue):
-#     def early_bailout(self, node: Node) -> EarlyBailoutResult:
-#         # TODO RDH if ncpus == 0
-#         # because right now, we never bail out.
-#         # not great if jobs use n-1 ncpus...
-#         return super().early_bailout(node)
-
-
 def parse_jobs(
-    # pbscmd: PBSCMD,
+    guacdb: GuacDatabase
     # resource_definitions: Dict[str, PBSProResourceDefinition],
     # queues: Dict[str, PBSProQueue],
     #resources_for_scheduling: Set[str],
 ) -> List[Job]:
     """
-    TODO:
-    Parses Guac Connections and creates relevant hpc.autoscale.job.job.Job objects
+    Parses Guacamole Connections and creates relevant hpc.autoscale.job.job.Job objects
     """
-    #parser = get_pbspro_parser()
-    # alternate format triggered by
-    # -a, -i, -G, -H, -M, -n, -r, -s, -T, or -u
     ret: List[Job] = []
 
-    # response: Dict = pbscmd.qstat_json("-f", "-t")
+    response: Dict = guacdb.get_queued_connections()
 
-    # for job_id, jdict in response.get("Jobs", {}).items():
-    #     job_id = job_id.split(".")[0]
+    for record in response:
+        job_id = record[0]
 
-    #     job_state = jdict.get("job_state")
-    #     if not job_state:
-    #         logging.warning("No job_state defined for job %s. Skipping", job_id)
-    #         continue
+        node_count = 1
+        my_job_id = str(job_id)
 
-    #     if job_state != PBSProJobStates.Queued:
-    #         continue
-
-    #     # ensure we don't autoscale jobs from disabled or non-started queues
-    #     qname = jdict.get("queue")
-    #     if not qname or qname not in queues:
-    #         logging.warning("queue was not defined for job %s: ignoring", job_id)
-    #         continue
-
-    #     queue: PBSProQueue = queues[qname]
-    #     if not queue.enabled:
-    #         logging.fine("Skipping job %s from disabled queue %s", job_id, qname)
-    #         continue
-
-    #     if not queue.started:
-    #         logging.fine("Skipping job %s from non-started queue %s", job_id, qname)
-    #         continue
-
-    #     # handle array vs individual jobs
-    #     if jdict.get("array"):
-    #         iterations = parser.parse_range_size(jdict["array_indices_submitted"])
-    #         remaining = parser.parse_range_size(jdict["array_indices_remaining"])
-    #     elif "[" in job_id:
-    #         continue
-    #     else:
-    #         iterations = 1
-    #         remaining = 1
-
-    #     res_list = jdict["Resource_List"]
-    #     rdict = parser.convert_resource_list(res_list)
-
-    #     pack = (
-    #         PackingStrategy.PACK
-    #         if rdict["place"]["arrangement"] in ["free", "pack"]
-    #         else PackingStrategy.SCATTER
-    #     )
-
-    #     # SMP style jobs
-    #     is_smp = (
-    #         rdict["place"].get("grouping") == "host"
-    #         or rdict["place"]["arrangement"] == "pack"
-    #     )
-
-    #     # pack jobs do not need to define node_count
-
-    #     node_count = int(rdict.get("nodect", "0"))
-
-    #     smp_multiplier = 1
-
-    #     if is_smp:
-    #         smp_multiplier = max(1, iterations) * max(1, node_count)
-    #         # for key, value in list(rdict.items()):
-    #         #     if isinstance(value, (float, int)):
-    #         #         value = value * smp_multiplier
-    #         iterations = node_count = 1
-
-    #     effective_node_count = max(node_count, 1)
-
-    #     # htc jobs set ungrouped=true. see our default htcq
-    #     colocated = (
-    #         not is_smp
-    #         and queue.uses_placement
-    #         and rdict.get("ungrouped", "false").lower() == "false"
-    #     )
-
-    #     sharing = rdict["place"].get("sharing")
-
-    #     for n, chunk_base in enumerate(rdict["select"]):
-
-    #         chunk: Dict[str, Any] = {}
-
-    #         chunk.update(rdict)
-
-    #         if "ncpus" not in chunk_base:
-    #             chunk["ncpus"] = chunk["ncpus"] // effective_node_count
-
-    #         if smp_multiplier > 1:
-    #             for key, value in list(chunk_base.items()):
-    #                 if isinstance(value, (int, float)):
-    #                     chunk_base[key] = value * smp_multiplier
-    #         # do this _after_ rdict, since the chunks
-    #         # will override the top level resources
-    #         # e.g. notice that ncpus=4. This will be the rdict value
-    #         # but the chunks have ncpus=2
-    #         # Resource_List.ncpus = 4
-    #         # Resource_List.nodect = 2
-    #         # Resource_List.select = 2:ncpus=2
-
-    #         chunk.update(chunk_base)
-    #         working_constraint: Dict[str, Any] = {}
-    #         constraints = [working_constraint]
-
-    #         if colocated:
-    #             working_constraint["in-a-placement-group"] = True
-
-    #         my_job_id = job_id
-    #         if len(rdict["select"]) > 1:
-    #             if "." in job_id:
-    #                 job_index, host = job_id.split(".", 1)
-    #                 my_job_id = "{}+{}.{}".format(job_index, n, host)
-    #             else:
-    #                 my_job_id = "{}+{}".format(job_id, n)
-
-    #         if sharing == "excl":
-    #             working_constraint["exclusive-task"] = True
-    #         elif sharing == "exclhost":
-    #             working_constraint["exclusive"] = True
-
-    #         job_resources = {}
-
-    #         for rname, rvalue in chunk.items():
-    #             if rname in ["select", "place", "nodect"]:
-    #                 continue
-
-    #             if rname not in resources_for_scheduling:
-    #                 if rname == "skipcyclesubhook":
-    #                     continue
-    #                 logging.warning(
-    #                     "Ignoring resource %s as it was not defined in sched_config",
-    #                     rname,
-    #                 )
-    #                 continue
-
-    #             # add all resource requests here. By that, I mean
-    #             # non resource requests, like exclusive, should be ignored
-    #             # required for get_non_host_constraints
-    #             job_resources[rname] = rvalue
-
-    #             resource_def = resource_definitions.get(rname)
-
-    #             # constraints are for the node/host
-    #             # queue/scheduler level ones will be added using
-    #             # > queue.get_non_host_constraints(job_resource)
-    #             if not resource_def or not resource_def.is_host:
-    #                 continue
-
-    #             if rname not in working_constraint:
-    #                 working_constraint[rname] = rvalue
-    #             else:
-    #                 # hit a conflict, so start a new working cons
-    #                 # so we maintain precedence
-    #                 working_constraint = {rname: rvalue}
-    #                 constraints.append(working_constraint)
-
-    #         queue_constraints = queue.get_non_host_constraints(job_resources)
-    #         constraints.extend(queue_constraints)
-
-    #         job = Job(
-    #             name=my_job_id,
-    #             constraints=constraints,
-    #             iterations=iterations,
-    #             node_count=node_count,
-    #             colocated=colocated,
-    #             packing_strategy=pack,
-    #         )
-    #         job.iterations_remaining = remaining
-    #         ret.append(job)
+        job = Job(
+            name=my_job_id,
+            node_count=node_count,
+            colocated=False,
+            constraints={"ncpus":1, "exclusive": True},
+        )
+        job.iterations_remaining = 1
+        ret.append(job)
 
     return ret
 
 
 def parse_scheduler_nodes(
-#    pbscmd: PBSCMD, resource_definitions: Dict[str, PBSProResourceDefinition]
+    guacdb: GuacDatabase
+#   resource_definitions: Dict[str, PBSProResourceDefinition]
 ) -> List[Node]:
     """
+    Get the list of active connections assigned to nodes
     Gets the current state of the nodes as the scheduler sees them, including resources,
     assigned resources, jobs currently running etc.
     """
     ret: List[Node] = []
-    # for ndict in pbscmd.pbsnodes_parsed("-a"):
-    #     node = parse_scheduler_node(ndict, resource_definitions)
+    connections: List[Dict] = guacdb.get_active_connections()
 
-    #     if not node.available.get("ccnodeid"):
-    #         node.metadata["override_resources"] = False
-    #         logging.fine(
-    #             "'ccnodeid' is not defined so %s has not been joined to the cluster by the autoscaler"
-    #             + " yet or this is not a CycleCloud managed node",
-    #             node,
-    #         )
-    #     ret.append(node)
+    for connection in connections:
+
+        node = parse_scheduler_node(connection)
+
+        if not node.available.get("ccnodeid"):
+            node.metadata["override_resources"] = False
+            logging.fine(
+                "'ccnodeid' is not defined so %s has not been joined to the cluster by the autoscaler"
+                + " yet or this is not a CycleCloud managed node",
+                node,
+            )
+        ret.append(node)
     return ret
 
 
 def parse_scheduler_node(
-#    ndict: Dict[str, Any], resource_definitions: Dict[str, PBSProResourceDefinition]
+    ndict: Dict, #resource_definitions: Dict[str, PBSProResourceDefinition]
 ) -> SchedulerNode:
     """
     Implementation of parsing a single scheduler node.
     """
     # parser = get_pbspro_parser()
 
-    # hostname = ndict["name"]
+    hostname = ndict["connection_name"]
     # res_avail = parser.parse_resources_available(ndict, filter_is_host=True)
     # res_assigned = parser.parse_resources_assigned(ndict, filter_is_host=True)
 
-    node: SchedulerNode = Node()
-    #node = SchedulerNode(hostname, res_avail)
+    node = SchedulerNode(hostname)
+    #node.resources["ccnodeid"] = ndict["nodeid"]
+    node.assign(ndict["connection_id"])
     # jobs_expr = ndict.get("jobs", "")
 
-    # state = ndict.get("state") or ""
-
+    state = ndict["status"] or ""
     # if state == "free" and jobs_expr.strip():
     #     state = "partially-free"
 
     # node.metadata["pbs_state"] = state
 
-    # if "down" in state:
-    #     node.marked_for_deletion = True
+    if "released" in state:
+        node.marked_for_deletion = True
 
+    # TODO : Add last_state_change_time ?
     # node.metadata["last_state_change_time"] = ndict.get("last_state_change_time", "")
 
     # for tok in jobs_expr.split(","):

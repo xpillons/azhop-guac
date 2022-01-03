@@ -2,6 +2,7 @@ import os
 import sys
 from argparse import ArgumentParser
 from typing import Any, Dict, List, Optional
+from guac.database import GuacDatabase
 
 import hpc.autoscale.job.driver
 import hpc.autoscale.hpclogging as logging
@@ -39,10 +40,11 @@ def autoscale_guac(
         # put in read only mode
         config["read_only"] = True
 
+    guacdb = GuacDatabase(config["guac"])
     # interface to guac, generally by cli
     if guac_driver is None:
         # allow tests to pass in a mock
-        guac_driver = GuacDriver()
+        guac_driver = GuacDriver(guacdb)
 
     if guac_env is None:
         guac_env = envlib.from_driver(guac_driver)
@@ -153,9 +155,8 @@ def new_demand_calculator(
     if guac_env is None:
         guac_env = envlib.from_driver(guac_driver)
 
-    # TODO : Unable to initialize node history
-    # if node_history is None:
-    #     node_history = guac_driver.new_node_history(config)
+    if node_history is None:
+        node_history = guac_driver.new_node_history(config)
 
     # keep it as a config
     node_mgr = new_node_manager(config, existing_nodes=guac_env.scheduler_nodes)
@@ -167,7 +168,7 @@ def new_demand_calculator(
         config,
         node_mgr=node_mgr,
         node_history=node_history,
-        node_queue=guac_driver.new_node_queue(config),
+#        node_queue=guac_driver.new_node_queue(config),
         singleton_lock=singleton_lock,  # it will handle the none case,
         existing_nodes=guac_env.scheduler_nodes,
     )
@@ -177,7 +178,7 @@ def new_demand_calculator(
     for bucket in demand_calculator.node_mgr.get_buckets():
 
         # ccnodeid will almost certainly not be defined. It just needs
-        # to be definede once, so we will add a default for all nodes
+        # to be defined once, so we will add a default for all nodes
         # the first time we see it is missingg
         if "ccnodeid" not in bucket.resources and not ccnode_id_added:
             hpc.autoscale.job.driver.add_ccnodeid_default_resource(
@@ -199,7 +200,7 @@ def calculate_demand(
     demand_calculator = new_demand_calculator(
         config, guac_env, guac_driver, ctx_handler, node_history
     )
-
+# TODO: Check if connection is used
     for job in guac_env.jobs:
         if job.metadata.get("job_state") == "running":
             continue
@@ -226,17 +227,17 @@ def print_demand(
                 "name",
                 "hostname",
                 "job_ids",
-                "*hostgroups",
+#                "*hostgroups",
                 "exists",
                 "required",
                 "managed",
-                "slots",
-                "*slots",
+#                "slots",
+#                "*slots",
                 "vm_size",
                 "memory",
                 "vcpu_count",
                 "state",
-                "placement_group",
+#                "placement_group",
                 "create_time_remaining",
                 "idle_time_remaining",
             ],
