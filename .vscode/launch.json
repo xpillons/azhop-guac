@@ -5,12 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Autoscaler",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/guac/autoscaler.py",
+            "console": "integratedTerminal",
+            "args": ["-c", "autoscale.json"]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal",
-            "args": ["-c", "autoscale.json"]
+            "console": "integratedTerminal"
         }
     ]
 }
