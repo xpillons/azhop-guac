@@ -292,7 +292,7 @@ def parse_jobs(
             name=my_job_id,
             node_count=node_count,
             colocated=False,
-            
+            constraints={"ncpus":1, "exclusive": True}
         )
         if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Assigned:
             job.executing_hostnames=record["connection_name"]
