@@ -58,9 +58,9 @@ def autoscale_guac(
     demand_calculator = calculate_demand(config, guac_env, guac_driver, ctx_handler, node_history)
 
     failed_nodes = demand_calculator.node_mgr.get_failed_nodes()
-    for node in guac_env.scheduler_nodes:
-        if "down" in node.metadata.get("guac_state", ""):
-            failed_nodes.append(node)
+#    for node in guac_env.scheduler_nodes:
+#        if "down" in node.metadata.get("guac_state", ""):
+#            failed_nodes.append(node)
     guac_driver.handle_failed_nodes(failed_nodes)
 
     demand_result = demand_calculator.finish()
@@ -200,10 +200,12 @@ def calculate_demand(
     demand_calculator = new_demand_calculator(
         config, guac_env, guac_driver, ctx_handler, node_history
     )
-# TODO: Check if connection is used
+    # Check if connection is used
     for job in guac_env.jobs:
-        if job.metadata.get("job_state") == "running":
+        if len(job.executing_hostnames) > 0:
             continue
+        # if job.metadata.get("job_state") == "running":
+        #     continue
 
         if ctx_handler:
             ctx_handler.set_context("[job {}]".format(job.name))

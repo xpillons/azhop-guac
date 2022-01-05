@@ -15,7 +15,7 @@ from hpc.autoscale import hpctypes as ht
 from hpc.autoscale.job.nodequeue import NodeQueue
 from hpc.autoscale.job.schedulernode import SchedulerNode
 
-from guac.database import GuacDatabase, GuacConnectionStates
+from guac.database import GuacDatabase, GuacConnectionStates, GuacConnectionAttributes
 
 class GuacDriver(SchedulerDriver):
     """
@@ -168,6 +168,15 @@ class GuacDriver(SchedulerDriver):
             try:
                 if len(node.assignments):
                     job_id=int(next(iter(node.assignments)))
+                    # If connection is already assigned, skip it
+                    attributes = self.guacdb.get_connection_attributes(job_id)
+                    if attributes[GuacConnectionAttributes.NodeId] == node.resources.get("ccnodeid"):
+                        logging.info(
+                            "%s is already assigned to job %s, skipping",
+                            node,
+                            job_id,
+                        )
+                        continue
                     self.guacdb.assign_connection_to_host(job_id, node.hostname)
                     self.guacdb.update_connection_status(job_id, GuacConnectionStates.Assigned)
                     self.guacdb.update_connection_nodeid(job_id, node.resources["ccnodeid"])
@@ -190,8 +199,8 @@ class GuacDriver(SchedulerDriver):
     def handle_draining(self, nodes: List[Node]) -> List[Node]:
         # TODO batch these up, but keep it underneath the
         # max arg limit
-        ret = []
-        return ret
+        #ret = []
+        return nodes
         for node in nodes:
             if not node.hostname:
                 logging.info("Node %s has no hostname.", node)
@@ -240,27 +249,28 @@ class GuacDriver(SchedulerDriver):
         for node in nodes:
             if not node.hostname:
                 continue
-            try:
-                self.pbscmd.qmgr("list", "node", node.hostname)
-            except CalledProcessError as e:
-                if "Server has no node list" in str(e):
-                    ret.append(node)
-                    continue
-                logging.error(
-                    "Could not list node with hostname %s - %s", node.hostname, e
-                )
-                continue
+            ret.append(node)
+            # try:
+            #     self.pbscmd.qmgr("list", "node", node.hostname)
+            # except CalledProcessError as e:
+            #     if "Server has no node list" in str(e):
+            #         ret.append(node)
+            #         continue
+            #     logging.error(
+            #         "Could not list node with hostname %s - %s", node.hostname, e
+            #     )
+            #     continue
 
-            try:
-                self.pbscmd.qmgr("delete", "node", node.hostname)
-                node.metadata["pbs_state"] = "deleted"
-                ret.append(node)
-            except CalledProcessError as e:
-                logging.error(
-                    "Could not remove %s from cluster: %s. Will retry next cycle.",
-                    node,
-                    e,
-                )
+            # try:
+            #     self.pbscmd.qmgr("delete", "node", node.hostname)
+            #     node.metadata["pbs_state"] = "deleted"
+            #     ret.append(node)
+            # except CalledProcessError as e:
+            #     logging.error(
+            #         "Could not remove %s from cluster: %s. Will retry next cycle.",
+            #         node,
+            #         e,
+            #     )
         return ret
 
     def parse_jobs(
@@ -355,11 +365,13 @@ def parse_jobs(
     """
     ret: List[Job] = []
 
-    response: Dict = guacdb.get_queued_connections()
+    response: Dict = guacdb.get_connections()
 
     for record in response:
-        job_id = record[0]
-
+        if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Released:
+            continue
+    
+        job_id = record["connection_id"]
         node_count = 1
         my_job_id = str(job_id)
 
@@ -367,8 +379,9 @@ def parse_jobs(
             name=my_job_id,
             node_count=node_count,
             colocated=False,
-            constraints={"ncpus":1, "exclusive": True},
         )
+        if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Assigned:
+            job.executing_hostnames=record["connection_name"]
         job.iterations_remaining = 1
         ret.append(job)
 
@@ -415,18 +428,21 @@ def parse_scheduler_node(
     # res_assigned = parser.parse_resources_assigned(ndict, filter_is_host=True)
 
     node = SchedulerNode(hostname)
-    #node.resources["ccnodeid"] = ndict["nodeid"]
-    node.assign(ndict["connection_id"])
+#    node.metadata["ccnodeid"] = ndict["nodeid"]
+    node.available["ccnodeid"] = ndict["nodeid"]
     # jobs_expr = ndict.get("jobs", "")
 
-    state = ndict["status"] or ""
+    state = ndict[GuacConnectionAttributes.Status] or ""
     # if state == "free" and jobs_expr.strip():
     #     state = "partially-free"
 
     # node.metadata["pbs_state"] = state
 
-    if "released" in state:
+    if GuacConnectionStates.Released in state:
         node.marked_for_deletion = True
+        node.__assignments = set()
+    else:
+        node.assign(str(ndict["connection_id"]))
 
     # TODO : Add last_state_change_time ?
     # node.metadata["last_state_change_time"] = ndict.get("last_state_change_time", "")
