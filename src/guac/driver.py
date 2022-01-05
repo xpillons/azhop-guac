@@ -29,8 +29,13 @@ class GuacDriver(SchedulerDriver):
         self.__read_only_resources: Optional[Set[str]] = None
         self.__jobs_cache: Optional[List[Job]] = None
         self.__scheduler_nodes_cache: Optional[List[Node]] = None
+        self.__resource_definitions = None
         self.down_timeout = down_timeout
         self.down_timeout_td = datetime.timedelta(seconds=self.down_timeout)
+
+    @property
+    def resource_definitions(self) -> Dict:
+        return self.__resource_definitions
 
     @property
     def read_only_resources(self) -> Set[str]:
@@ -209,10 +214,10 @@ class GuacDriver(SchedulerDriver):
         """
         this is cached at the library level
         """
-        scheduler = self.read_default_scheduler()
-        queues = self.read_queues(scheduler.resource_state.shared_resources)
+#        scheduler = self.read_default_scheduler()
+#        queues = self.read_queues(scheduler.resource_state.shared_resources)
         nodes = self.parse_scheduler_nodes()
-        jobs = self.parse_jobs(queues, scheduler.resources_for_scheduling)
+        jobs = self.parse_jobs()#queues, scheduler.resources_for_scheduling)
         return jobs, nodes
 
     def parse_scheduler_nodes(

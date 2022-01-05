@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "azguac",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/guac/cli.py",
+            "console": "integratedTerminal",
+            "args": ["autoscale", "--config", "${workspaceFolder}/autoscale.json"],
+        },
+        {
             "name": "Autoscaler",
             "type": "python",
             "request": "launch",

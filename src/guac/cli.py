@@ -9,9 +9,12 @@ from hpc.autoscale.job.job import Job
 from hpc.autoscale.results import DefaultContextHandler
 from hpc.autoscale.util import partition_single
 
+from guac import environment
 from guac.autoscaler import new_demand_calculator
 from guac.environment import GuacEnvironment
 from guac.driver import GuacDriver
+
+from guac.database import GuacDatabase
 # from pbspro.parser import PBSProParser, get_pbspro_parser, set_pbspro_parser
 # from pbspro.pbscmd import PBSCMD
 # from pbspro.resource import read_resource_definitions
@@ -35,7 +38,7 @@ class GUACCLI(clilib.CommonCLI):
 
     def _driver(self, config: Dict) -> SchedulerDriver:
         if self.__driver is None:
-            self.__driver = GuacDriver()#self.pbscmd)
+            self.__driver = GuacDriver(GuacDatabase(config["guac"]))#self.pbscmd)
         return self.__driver
 
     def _initconfig(self, config: Dict) -> None:
@@ -47,27 +50,10 @@ class GUACCLI(clilib.CommonCLI):
     def _default_output_columns(
         self, config: Dict, cmd: Optional[str] = None
     ) -> List[str]:
-        driver = self._driver(config)
-        env = self._guac_env(driver)
-        resource_columns = []
-        for res_name, res_def in env.resource_definitions.items():
-            if res_name in ["aoe", "instance_id", "vnode", "host", "arch", "vm_size"]:
-                continue
-            if res_def.is_host:
-                if res_def.name == "ccnodeid":
-                    continue
-                elif res_def.is_consumable and res_def.type.name not in [
-                    "string",
-                    "stringarray",
-                ]:
-                    resource_columns.append("/{}".format(res_name))
-                else:
-                    if res_name == "group_id":
-                        resource_columns.append("group_id[-8:]")
-                    else:
-                        resource_columns.append(res_name)
-
-        resource_columns = sorted(resource_columns)
+        # driver = self._driver(config)
+        # env = self._guac_env(driver)
+        # resource_columns = []
+        # resource_columns = sorted(resource_columns)
 
         return config.get(
             "output_columns",
@@ -79,7 +65,7 @@ class GUACCLI(clilib.CommonCLI):
                 "state",
                 "vm_size",
             ]
-            + resource_columns
+#            + resource_columns
             + [
                 "instance_id[:11]",
                 "ctr@create_time_remaining",
@@ -89,7 +75,7 @@ class GUACCLI(clilib.CommonCLI):
 
     def _guac_env(self, guac_driver: GuacDriver) -> GuacEnvironment:
         if self.__guac_env is None:
-            self.__guac_env = GuacEnvironment.from_driver(guac_driver)
+            self.__guac_env = environment.from_driver(guac_driver)
         return self.__guac_env
 
     def _demand_calc(
