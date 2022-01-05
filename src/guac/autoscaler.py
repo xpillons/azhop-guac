@@ -58,9 +58,6 @@ def autoscale_guac(
     demand_calculator = calculate_demand(config, guac_env, guac_driver, ctx_handler, node_history)
 
     failed_nodes = demand_calculator.node_mgr.get_failed_nodes()
-#    for node in guac_env.scheduler_nodes:
-#        if "down" in node.metadata.get("guac_state", ""):
-#            failed_nodes.append(node)
     guac_driver.handle_failed_nodes(failed_nodes)
 
     demand_result = demand_calculator.finish()
@@ -168,7 +165,6 @@ def new_demand_calculator(
         config,
         node_mgr=node_mgr,
         node_history=node_history,
-#        node_queue=guac_driver.new_node_queue(config),
         singleton_lock=singleton_lock,  # it will handle the none case,
         existing_nodes=guac_env.scheduler_nodes,
     )
@@ -229,17 +225,13 @@ def print_demand(
                 "name",
                 "hostname",
                 "job_ids",
-#                "*hostgroups",
                 "exists",
                 "required",
                 "managed",
-#                "slots",
-#                "*slots",
                 "vm_size",
                 "memory",
                 "vcpu_count",
                 "state",
-#                "placement_group",
                 "create_time_remaining",
                 "idle_time_remaining",
             ],
