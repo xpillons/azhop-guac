@@ -4,3 +4,5 @@ logs
 scalelib.lock
 nodehistory.db
 *.pyc
+dist
+src/*.egg*
