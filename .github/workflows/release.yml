@@ -13,6 +13,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+
       - name: Build pkg
         run:
           sudo apt update || apt update;
@@ -20,10 +24,6 @@ jobs:
           pip3 install virtualenv;
           python3 -m virtualenv $GITHUB_WORKSPACE/.venv/;
           source $GITHUB_WORKSPACE/.venv/bin/activate && python package.py;
-
-      - name: Get the version
-        id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
 
       - name: Create Release
         id: create_release
@@ -35,7 +35,7 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: true
-          
+
       - name: Upload Release Asset
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1

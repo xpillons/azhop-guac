@@ -78,6 +78,7 @@ source $VENV/bin/activate
 # not sure why but pip gets confused installing frozendict locally
 # if you don't install it first. It has no dependencies so this is safe.
 pip install packages/*
+pip install -r requirements.txt
 
 cat > $VENV/bin/azguac <<EOF
 #!$VENV/bin/python
