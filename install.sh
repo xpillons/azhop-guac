@@ -77,7 +77,7 @@ python3 -m virtualenv $VENV
 source $VENV/bin/activate
 
 pip install -r requirements.txt
-rm install/zipp*.whl
+rm -f packages/zipp*.whl
 pip install packages/*
 
 
