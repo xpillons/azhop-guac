@@ -60,7 +60,7 @@ class GUACCLI(clilib.CommonCLI):
             [
                 "name",
                 "hostname",
-                "pbs_state",
+                "guac_state",
                 "job_ids",
                 "state",
                 "vm_size",

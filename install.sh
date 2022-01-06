@@ -80,6 +80,7 @@ pip install -r requirements.txt
 rm -f packages/zipp*.whl
 pip install packages/*
 
+cp logging.conf /opt/cycle/${SCHEDULER}/logging.conf
 
 cat > $VENV/bin/azguac <<EOF
 #!$VENV/bin/python
