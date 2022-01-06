@@ -1,1 +1,2 @@
 mysql-connector-python==8.0.26
+zipp==3.6.0

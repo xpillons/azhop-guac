@@ -1,5 +1,4 @@
 import argparse
-import configparser
 import glob
 import os
 import shutil
@@ -83,16 +82,6 @@ def execute() -> None:
     args = argument_parser.parse_args()
 
     cycle_libs = get_cycle_libs(args)
-
-    # parser = configparser.ConfigParser()
-    # ini_path = os.path.abspath("project.ini")
-
-    # with open(ini_path) as fr:
-    #     parser.read_file(fr)
-
-    # version = parser.get("project", "version")
-    # if not version:
-    #     raise RuntimeError("Missing [project] -> version in {}".format(ini_path))
 
     if not os.path.exists("dist"):
         os.makedirs("dist")
