@@ -131,6 +131,5 @@ setup(
     tests_require=["pytest==3.2.3"],
     cmdclass={"test": PyTest, "format": Formatter, "types": TypeChecking},
     url="http://www.microsoft.com",
-    maintainer="Azure HPC Ondemand Team",
-    maintainer_email="xpillons@microsoft.com",
+    maintainer="Azure HPC Ondemand Team"
 )
