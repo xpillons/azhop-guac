@@ -45,6 +45,12 @@ class GUACCLI(clilib.CommonCLI):
         pass
 
     def _initconfig_parser(self, parser: ArgumentParser) -> None:
+        parser.add_argument(
+            "--guac-config",
+            default="/etc/guacamole/guacamole.properties",
+            dest="guac__config_file",
+        )
+
         pass
 
     def _default_output_columns(

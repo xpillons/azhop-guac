@@ -10,6 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/src/guac/cli.py",
             "console": "integratedTerminal",
+//            "args": ["initconfig","--cluster-name", "winviz", "--username", "hpcadmin", "--url", "https://localhost:9443/cyclecloud", "--guac-config", "/foo/guac"],
             "args": ["autoscale", "--config", "${workspaceFolder}/autoscale.json"],
         },
         {

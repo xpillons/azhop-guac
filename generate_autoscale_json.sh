@@ -77,21 +77,23 @@ fi
 
 temp_autoscale=$TEMP/autoscale.json.$(date +%s)
 
+                # --disable-default-resources \
+                # --default-resource '{"select": {}, "name": "ncpus", "value": "node.pcpu_count"}' \
+                # --default-resource '{"select": {}, "name": "ngpus", "value": "node.gpu_count"}' \
+                # --default-resource '{"select": {}, "name": "disk", "value": "size::20g"}' \
+                # --default-resource '{"select": {}, "name": "host", "value": "node.hostname"}' \
+                # --default-resource '{"select": {}, "name": "slot_type", "value": "node.nodearray"}' \
+                # --default-resource '{"select": {}, "name": "group_id", "value": "node.placement_group"}' \
+                # --default-resource '{"select": {}, "name": "mem", "value": "node.memory"}' \
+                # --default-resource '{"select": {}, "name": "vm_size", "value": "node.vm_size"}' \
+                # --lock-file    $INSTALLDIR/scalelib.lock \
+                # --log-config   $INSTALLDIR/logging.conf \
+                # --guac-config /etc/guacamole/guacamole.properties \
+
 (azguac initconfig --cluster-name ${CLUSTER_NAME} \
                 --username     ${USERNAME} \
                 --password     ${PASSWORD} \
                 --url          ${URL} \
-                --lock-file    $INSTALLDIR/scalelib.lock \
-                --log-config   $INSTALLDIR/logging.conf \
-                --disable-default-resources \
-                --default-resource '{"select": {}, "name": "ncpus", "value": "node.pcpu_count"}' \
-                --default-resource '{"select": {}, "name": "ngpus", "value": "node.gpu_count"}' \
-                --default-resource '{"select": {}, "name": "disk", "value": "size::20g"}' \
-                --default-resource '{"select": {}, "name": "host", "value": "node.hostname"}' \
-                --default-resource '{"select": {}, "name": "slot_type", "value": "node.nodearray"}' \
-                --default-resource '{"select": {}, "name": "group_id", "value": "node.placement_group"}' \
-                --default-resource '{"select": {}, "name": "mem", "value": "node.memory"}' \
-                --default-resource '{"select": {}, "name": "vm_size", "value": "node.vm_size"}' \
                 --idle-timeout 60 \
                 --boot-timeout 1800 \
                 > $temp_autoscale && mv $temp_autoscale $INSTALLDIR/autoscale.json ) || (rm -f $temp_autoscale.json; exit 1)
