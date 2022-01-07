@@ -99,4 +99,5 @@ temp_autoscale=$TEMP/autoscale.json.$(date +%s)
                 > $temp_autoscale && mv $temp_autoscale $INSTALLDIR/autoscale.json ) || (rm -f $temp_autoscale.json; exit 1)
 
 echo testing that we can connect to CycleCloud...
+chmod 600 $INSTALLDIR/autoscale.json
 /usr/local/bin/azguac connect && echo success! || (echo Please check the arguments passed in and try again && exit 1)
