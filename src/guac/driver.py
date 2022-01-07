@@ -148,6 +148,8 @@ class GuacDriver(SchedulerDriver):
                     job_id=int(next(iter(node.assignments)))
                     # If connection is already assigned, skip it
                     attributes = self.guacdb.get_connection_attributes(job_id)
+                    if attributes[GuacConnectionAttributes.Status] == GuacConnectionStates.Assigned:
+                        continue
                     if attributes[GuacConnectionAttributes.NodeId] == node.resources.get("ccnodeid"):
                         logging.info(
                             "%s is already assigned to job %s, skipping",
@@ -155,6 +157,7 @@ class GuacDriver(SchedulerDriver):
                             job_id,
                         )
                         continue
+
                     self.guacdb.assign_connection_to_host(job_id, node.hostname)
                     self.guacdb.update_connection_status(job_id, GuacConnectionStates.Assigned)
                     self.guacdb.update_connection_nodeid(job_id, node.resources["ccnodeid"])
@@ -286,7 +289,10 @@ def parse_jobs(
     response: Dict = guacdb.get_connections()
 
     for record in response:
+        # Skip Released and Assigned connections
         if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Released:
+            continue
+        if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Assigned:
             continue
     
         job_id = record["connection_id"]
