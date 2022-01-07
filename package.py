@@ -137,7 +137,7 @@ def execute() -> None:
     _add("install.sh", mode=os.stat("install.sh")[0])
     _add("generate_autoscale_json.sh", mode=os.stat("generate_autoscale_json.sh")[0])
     _add("requirements.txt", mode=os.stat("requirements.txt")[0])
-    _add("logging.conf", mode=os.stat("./conf/logging.conf")[0])
+    _add("./conf/logging.conf", mode=os.stat("./conf/logging.conf")[0])
 
 if __name__ == "__main__":
     execute()
