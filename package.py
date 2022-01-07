@@ -11,7 +11,12 @@ from typing import Dict, List, Optional
 
 SCALELIB_VERSION = "0.2.7"
 CYCLECLOUD_API_VERSION = "8.1.0"
-CYCLECLOUD_GUAC = "0.1.0"
+
+if 'VERSION' in os.environ:
+    CYCLECLOUD_GUAC = os.environ['VERSION']
+else:
+    CYCLECLOUD_GUAC = "unofficial"
+
 
 def build_sdist() -> str:
     cmd = [sys.executable, "setup.py", "sdist"]
