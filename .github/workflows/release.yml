@@ -23,7 +23,8 @@ jobs:
           sudo apt-get install -y python3 python3-pip || apt-get install -y python3 python3-pip;
           pip3 install virtualenv;
           python3 -m virtualenv $GITHUB_WORKSPACE/.venv/;
-          export VERSION=${{ steps.get_version.outputs.version }}
+          export VERSION="${{ steps.get_version.outputs.version }}"
+
           source $GITHUB_WORKSPACE/.venv/bin/activate && python package.py;
 
       - name: Create Release
