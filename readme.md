@@ -1,0 +1,1 @@
+This project is a CycleCloud autoscaler for guacamole connections for the Azure HPC OnDemand Platform

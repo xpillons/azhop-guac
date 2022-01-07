@@ -80,6 +80,7 @@ pip install -r requirements.txt
 rm -f packages/zipp*.whl
 pip install packages/*
 
+echo "Copy logging configuration file"
 cp ./conf/logging.conf /opt/cycle/${SCHEDULER}/logging.conf
 
 cat > $VENV/bin/azguac <<EOF

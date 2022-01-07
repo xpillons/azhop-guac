@@ -6,3 +6,6 @@ nodehistory.db
 *.pyc
 dist
 src/*.egg*
+autoscale.json
+logging.conf
+guacamole.properties
