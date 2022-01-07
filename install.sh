@@ -93,17 +93,15 @@ chmod +x $VENV/bin/azguac
 azguac -h 2>&1 > /dev/null || exit 1
 
 ln -sf $VENV/bin/azguac /usr/local/bin/
+echo "'azguac' installed. A symbolic link was made to /usr/local/bin/azguac"
 
-# echo 'azpbs' installed. A symbolic link was made to /usr/local/bin/azpbs
-# crontab -l > /tmp/current_crontab
-# grep -q "Created by cyclecloud-${SCHEDULER} install.sh" /tmp/current_crontab
-# if [ $? != 0 ]; then
-#     echo \# Created by cyclecloud-${SCHEDULER} install.sh >> /tmp/current_crontab
-#     echo '* * * * * /usr/local/bin/azpbs autoscale -c /opt/cycle/'${SCHEDULER}'/autoscale.json' >> /tmp/current_crontab
-#     crontab /tmp/current_crontab
-# fi
-# rm -f /tmp/current_crontab
+# Remove any autoscale cron entries
+crontab -l | grep -v '/usr/local/bin/azguac autoscale'  | crontab -
 
-# crontab -l | grep -q "Created by cyclecloud-${SCHEDULER} install.sh" && exit 0
-# echo "Could not install cron job for autoscale!" >&2
-# exit 1
+# Add autoscale cron entry if requested
+if [ $DISABLE_CRON == 0 ]; then
+    crontab -l | grep -q "/usr/local/bin/azguac autoscale"
+    if [ $? != 0 ]; then
+        echo "* * * * * /usr/local/bin/azguac autoscale -c /opt/cycle/${SCHEDULER}/autoscale.json" | crontab -
+    fi
+fi
