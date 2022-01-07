@@ -90,7 +90,7 @@ temp_autoscale=$TEMP/autoscale.json.$(date +%s)
                 # --log-config   $INSTALLDIR/logging.conf \
                 # --guac-config /etc/guacamole/guacamole.properties \
 
-(azguac initconfig --cluster-name ${CLUSTER_NAME} \
+(/usr/local/bin/azguac initconfig --cluster-name ${CLUSTER_NAME} \
                 --username     ${USERNAME} \
                 --password     ${PASSWORD} \
                 --url          ${URL} \
@@ -99,4 +99,4 @@ temp_autoscale=$TEMP/autoscale.json.$(date +%s)
                 > $temp_autoscale && mv $temp_autoscale $INSTALLDIR/autoscale.json ) || (rm -f $temp_autoscale.json; exit 1)
 
 echo testing that we can connect to CycleCloud...
-azguac connect && echo success! || (echo Please check the arguments passed in and try again && exit 1)
+/usr/local/bin/azguac connect && echo success! || (echo Please check the arguments passed in and try again && exit 1)
