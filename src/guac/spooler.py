@@ -57,7 +57,7 @@ def process_spool_dir(
                 else:
                     logging.error("Unknown command %s", data["command"])
                     _exit_code = 1
-                #os.remove(full_filename)
+                os.remove(full_filename)
 
 def delete_status(connection_name: int) -> None:
     global _exit_code
