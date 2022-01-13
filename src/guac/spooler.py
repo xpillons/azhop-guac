@@ -32,6 +32,8 @@ def process_spool_dir(
 
     # list all files in spool dir
     command_dir = os.path.join(_spool_dir, "commands")
+    if not os.path.exists(command_dir):
+        os.makedirs(command_dir)
     for filename in os.listdir(command_dir):
         if filename.endswith(".json"):
             full_filename = os.path.join(command_dir, filename)
