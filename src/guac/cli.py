@@ -40,7 +40,11 @@ class GUACCLI(clilib.CommonCLI):
             default="/etc/guacamole/guacamole.properties",
             dest="guac__config_file",
         )
-
+        parser.add_argument(
+            "--guac-spool",
+            default="/anfhome/guac-spool",
+            dest="guac__spool_dir",
+        )
         pass
 
     def _default_output_columns(

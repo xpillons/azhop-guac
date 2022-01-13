@@ -9,3 +9,4 @@ src/*.egg*
 autoscale.json
 logging.conf
 guacamole.properties
+spool

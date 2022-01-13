@@ -89,6 +89,7 @@ temp_autoscale=$TEMP/autoscale.json.$(date +%s)
                 # --lock-file    $INSTALLDIR/scalelib.lock \
                 # --log-config   $INSTALLDIR/logging.conf \
                 # --guac-config /etc/guacamole/guacamole.properties \
+                # --guac-spool /anfhome/guac-spool \
 
 (/usr/local/bin/azguac initconfig --cluster-name ${CLUSTER_NAME} \
                 --username     ${USERNAME} \
