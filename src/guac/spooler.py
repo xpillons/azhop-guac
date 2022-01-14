@@ -5,10 +5,16 @@ from typing import Dict, Any, Optional
 from hpc.autoscale.util import json_load
 import hpc.autoscale.hpclogging as logging
 
+from azure.keyvault.secrets import SecretClient
+from azure.identity import DefaultAzureCredential, _credentials
+
 from guac.database import GuacDatabase, GuacConnectionStates, GuacConnectionAttributes
 
 _spool_dir="/anfhome/guac-spool"
 _exit_code = 0
+_credential = None
+
+_KVUri = ""
 
 #
 # for each files in the $SPOOL_DIR/commands directory
@@ -45,7 +51,7 @@ def process_spool_dir(
                 # Create a new connection
                 if data["command"] == "create":
                     logging.info("Processing command %s", data["command"])
-                    connection_id = guacdb.create_new_connection(connection_name, data["user"], data["password"], data["domain"], data["queue"])
+                    connection_id = guacdb.create_new_connection(connection_name, data["user"], get_user_password(data["user"]), data["domain"], data["queue"])
                     update_status_file(connection_name, str(connection_id), GuacConnectionStates.Queued)
 
                 # Delete connection
@@ -58,6 +64,14 @@ def process_spool_dir(
                     logging.error("Unknown command %s", data["command"])
                     _exit_code = 1
                 os.remove(full_filename)
+
+# Retrieve user password from the keyvault
+def get_user_password(username: str) -> str:
+    global _credential
+
+    client = SecretClient(vault_url=_KVUri, credential=_credential)
+    retrieved_secret = client.get_secret(f"{username}-password")
+    return retrieved_secret.value
 
 def delete_status(connection_name: int) -> None:
     global _exit_code
@@ -108,6 +122,9 @@ def main() -> int:
         "-c", "--config", help="Path to autoscale config.", required=True
     )
     global _spool_dir
+    global _credential
+    global _KVUri
+
     args = parser.parse_args()
     config_path = os.path.expanduser(args.config)
 
@@ -116,6 +133,10 @@ def main() -> int:
         return 1
 
     config = json_load(config_path)
+
+    _credential = DefaultAzureCredential()
+    keyVaultName = config["guac"]["vaultname"]
+    _KVUri = f"https://{keyVaultName}.vault.azure.net"
 
     _spool_dir = config["guac"]["spool_dir"]
     process_spool_dir(config)

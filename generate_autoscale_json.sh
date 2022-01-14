@@ -46,6 +46,10 @@ while (( "$#" )); do
             INSTALLDIR=$2
             shift 2
             ;;
+        --vaultname)
+            VAULTNAME=$2
+            shift 2
+            ;;
         -*|--*=)
             echo "Unknown option $1" >&2
             usage
@@ -95,8 +99,9 @@ temp_autoscale=$TEMP/autoscale.json.$(date +%s)
                 --username     ${USERNAME} \
                 --password     ${PASSWORD} \
                 --url          ${URL} \
-                --idle-timeout 60 \
+                --idle-timeout 120 \
                 --boot-timeout 1800 \
+                --guac-vaultname $VAULTNAME \
                 > $temp_autoscale && mv $temp_autoscale $INSTALLDIR/autoscale.json ) || (rm -f $temp_autoscale.json; exit 1)
 
 echo testing that we can connect to CycleCloud...

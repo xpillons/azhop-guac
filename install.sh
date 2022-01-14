@@ -96,13 +96,29 @@ azguac -h 2>&1 > /dev/null || exit 1
 ln -sf $VENV/bin/azguac /usr/local/bin/
 echo "'azguac' installed. A symbolic link was made to /usr/local/bin/azguac"
 
+cat > $VENV/bin/azguac-spooler <<EOF
+#!$VENV/bin/python
+
+from ${SCHEDULER}.spooler import main
+main()
+EOF
+chmod +x $VENV/bin/azguac-spooler
+
+ln -sf $VENV/bin/azguac-spooler /usr/local/bin/
+echo "'azguac-spooler' installed. A symbolic link was made to /usr/local/bin/azguac-spooler"
+
 # Remove any autoscale cron entries
 crontab -l | grep -v '/usr/local/bin/azguac autoscale'  | crontab -
+crontab -l | grep -v '/usr/local/bin/azguac-spooler'  | crontab -
 
 # Add autoscale cron entry if requested
 if [ $DISABLE_CRON == 0 ]; then
     crontab -l | grep -q "/usr/local/bin/azguac autoscale"
     if [ $? != 0 ]; then
         echo "* * * * * /usr/local/bin/azguac autoscale -c /opt/cycle/${SCHEDULER}/autoscale.json" | crontab -
+    fi
+    crontab -l | grep -q "/usr/local/bin/azguac-spooler"
+    if [ $? != 0 ]; then
+        echo "* * * * * /usr/local/bin/azguac-spooler -c /opt/cycle/${SCHEDULER}/autoscale.json" | crontab -
     fi
 fi

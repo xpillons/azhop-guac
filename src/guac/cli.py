@@ -45,6 +45,10 @@ class GUACCLI(clilib.CommonCLI):
             default="/anfhome/guac-spool",
             dest="guac__spool_dir",
         )
+        parser.add_argument(
+            "--guac-vaultname",
+            dest="guac__vaultname",
+        )
         pass
 
     def _default_output_columns(
