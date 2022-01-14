@@ -306,7 +306,7 @@ def parse_jobs(
             constraints={"ncpus":1, "exclusive": True}
         )
         if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Assigned:
-            job.executing_hostnames=record["connection_name"]
+            job.executing_hostnames=record["hostname"]
         job.iterations_remaining = 1
         ret.append(job)
 
@@ -344,7 +344,7 @@ def parse_scheduler_node(
     Implementation of parsing a single scheduler node.
     """
 
-    hostname = ndict["connection_name"]
+    hostname = ndict["hostname"]
 
     node = SchedulerNode(hostname)
     node.available["ccnodeid"] = ndict["nodeid"]
