@@ -112,13 +112,16 @@ crontab -l | grep -v '/usr/local/bin/azguac autoscale'  | crontab -
 crontab -l | grep -v '/usr/local/bin/azguac-spooler'  | crontab -
 
 # Add autoscale cron entry if requested
+crontab -l > /tmp/current_crontab
 if [ $DISABLE_CRON == 0 ]; then
     crontab -l | grep -q "/usr/local/bin/azguac autoscale"
     if [ $? != 0 ]; then
-        echo "* * * * * /usr/local/bin/azguac autoscale -c /opt/cycle/${SCHEDULER}/autoscale.json" | crontab -
+        echo "* * * * * /usr/local/bin/azguac autoscale -c /opt/cycle/${SCHEDULER}/autoscale.json" >> /tmp/current_crontab
     fi
     crontab -l | grep -q "/usr/local/bin/azguac-spooler"
     if [ $? != 0 ]; then
-        echo "* * * * * /usr/local/bin/azguac-spooler -c /opt/cycle/${SCHEDULER}/autoscale.json" | crontab -
+        echo "* * * * * /usr/local/bin/azguac-spooler -c /opt/cycle/${SCHEDULER}/autoscale.json" >> /tmp/current_crontab
     fi
+    crontab /tmp/current_crontab
 fi
+rm -f /tmp/current_crontab
