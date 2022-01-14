@@ -1,6 +1,7 @@
 import os, sys, json
 from argparse import ArgumentParser
 from typing import Dict, Any, Optional
+from pathlib import Path
 
 from hpc.autoscale.util import json_load
 import hpc.autoscale.hpclogging as logging
@@ -14,7 +15,7 @@ _spool_dir="/anfhome/guac-spool"
 _exit_code = 0
 _credential = None
 _logger = None
-
+_domain = "hpc.azure"
 _KVUri = ""
 
 #
@@ -44,21 +45,32 @@ def process_spool_dir(
     for filename in os.listdir(command_dir):
         if filename.endswith(".json"):
             full_filename = os.path.join(command_dir, filename)
+            path = Path(full_filename)
             _logger.info("Processing file %s", full_filename)
             with open(full_filename) as f:
                 data = json.load(f)
                 connection_name = os.path.splitext(filename)[0]
-
+                user = path.owner()
                 # Create a new connection
                 if data["command"] == "create":
-                    _logger.info("Processing command %s", data["command"])
-                    connection_id = guacdb.create_new_connection(connection_name, data["user"], get_user_password(data["user"]), data["domain"], data["queue"])
-                    update_status_file(connection_name, str(connection_id), GuacConnectionStates.Queued)
+                    _logger.info("Create connection to user %s on nodearray %s", user, data["queue"])
+                    # Check if the connection already exists
+                    record = guacdb.get_connection_by_name(connection_name)
+                    if len(record) > 0:
+                        _logger.info("Connection %s already exists, skipping", connection_name)
+                        continue
+                    password = get_user_password(user)
+                    if password is None:
+                        _logger.error("User %s password not found", user)
+                        _exit_code = 1
+                        continue
+                    connection_id = guacdb.create_new_connection(connection_name, user, password, _domain, data["queue"])
+                    update_status_file(connection_name, str(connection_id), GuacConnectionStates.Queued, user, data["queue"])
 
                 # Delete connection
                 elif data["command"] == "delete":
-                    _logger.info("Processing command %s", data["command"])
-                    guacdb.delete_connection(data["connection_id"], data["user"])
+                    _logger.info("Delete connection %s for user %s", data["connection_id"], user)
+                    guacdb.delete_connection(data["connection_id"], user)
                     delete_status(connection_name)
                 # Unknown command
                 else:
@@ -69,10 +81,17 @@ def process_spool_dir(
 # Retrieve user password from the keyvault
 def get_user_password(username: str) -> str:
     global _credential
+    secret = None
 
-    client = SecretClient(vault_url=_KVUri, credential=_credential)
-    retrieved_secret = client.get_secret(f"{username}-password")
-    return retrieved_secret.value
+    try:
+        client = SecretClient(vault_url=_KVUri, credential=_credential)
+        retrieved_secret = client.get_secret(f"{username}-password")
+        secret = retrieved_secret.value
+    except Exception as e:
+        _logger.error("Secret %s-password not found", username)
+        logging.exception(str(e))
+
+    return secret
 
 def delete_status(connection_name: int) -> None:
     global _exit_code
@@ -83,7 +102,7 @@ def delete_status(connection_name: int) -> None:
     if os.path.exists(status_filename):
         os.remove(status_filename)
 
-def update_status_file(connection_name: str, connection_id: str, status: str, hostname: Optional[str] = "") -> None:
+def update_status_file(connection_name: str, connection_id: str, status: str, username: str, jobname: Optional[str] = "job", hostname: Optional[str] = "") -> None:
     global _exit_code
     global _spool_dir
 
@@ -97,6 +116,8 @@ def update_status_file(connection_name: str, connection_id: str, status: str, ho
         f.write("{")
         f.write("\"status\": \"{}\"".format(status))
         f.write(",\"connection_id\": \"{}\"".format(connection_id))
+        f.write(",\"user\": \"{}\"".format(username))
+        f.write(",\"jobname\": \"{}\"".format(jobname))
         f.write(",\"hostname\": \"{}\"".format(hostname))
         f.write("}")
 
@@ -113,8 +134,7 @@ def update_status(
     response: Dict = guacdb.get_connections()
 
     for record in response:
-        update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], record["hostname"])
-
+        update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], jobname=record["nodearray"], hostname=record["hostname"], username=record["username"])
 
 
 def main() -> int:
@@ -143,6 +163,7 @@ def main() -> int:
     logging.initialize_logging(config)
     _logger = logging.getLogger("guac_spooler")
     _spool_dir = config["guac"]["spool_dir"]
+    # TODO : Dynamically retrieve the domain 
     process_spool_dir(config)
     update_status(config)
 

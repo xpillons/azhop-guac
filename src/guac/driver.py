@@ -146,9 +146,9 @@ class GuacDriver(SchedulerDriver):
             try:
                 if len(node.assignments):
                     job_id=int(next(iter(node.assignments)))
-                    # If connection is already assigned, skip it
+                    # If connection is already running, skip it
                     attributes = self.guacdb.get_connection_attributes(job_id)
-                    if attributes[GuacConnectionAttributes.Status] == GuacConnectionStates.Assigned:
+                    if attributes[GuacConnectionAttributes.Status] == GuacConnectionStates.Running:
                         continue
                     if attributes[GuacConnectionAttributes.NodeId] == node.resources.get("ccnodeid"):
                         logging.info(
@@ -159,7 +159,7 @@ class GuacDriver(SchedulerDriver):
                         continue
 
                     self.guacdb.assign_connection_to_host(job_id, node.hostname)
-                    self.guacdb.update_connection_status(job_id, GuacConnectionStates.Assigned)
+                    self.guacdb.update_connection_status(job_id, GuacConnectionStates.Running)
                     self.guacdb.update_connection_nodeid(job_id, node.resources["ccnodeid"])
                     ret.append(node)
             except Exception as e:
@@ -217,10 +217,8 @@ class GuacDriver(SchedulerDriver):
         """
         this is cached at the library level
         """
-#        scheduler = self.read_default_scheduler()
-#        queues = self.read_queues(scheduler.resource_state.shared_resources)
         nodes = self.parse_scheduler_nodes()
-        jobs = self.parse_jobs()#queues, scheduler.resources_for_scheduling)
+        jobs = self.parse_jobs()
         return jobs, nodes
 
     def parse_scheduler_nodes(
@@ -289,10 +287,10 @@ def parse_jobs(
     response: Dict = guacdb.get_connections()
 
     for record in response:
-        # Skip Released and Assigned connections
-        if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Released:
+        # Skip Completed and Running connections
+        if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Completed:
             continue
-        if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Assigned:
+        if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Running:
             continue
     
         job_id = record["connection_id"]
@@ -305,8 +303,9 @@ def parse_jobs(
             colocated=False,
             constraints={"ncpus":1, "exclusive": True}
         )
-        if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Assigned:
-            job.executing_hostnames=record["hostname"]
+        # TOFIX: This can never been executed
+        # if record[GuacConnectionAttributes.Status] == GuacConnectionStates.Running:
+        #     job.executing_hostnames=record["hostname"]
         job.iterations_remaining = 1
         ret.append(job)
 
@@ -354,7 +353,7 @@ def parse_scheduler_node(
 
     node.metadata["guac_state"] = state
 
-    if GuacConnectionStates.Released in state:
+    if GuacConnectionStates.Completed in state:
         node.marked_for_deletion = True
         node.__assignments = set()
     else:

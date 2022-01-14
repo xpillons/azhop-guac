@@ -5,9 +5,8 @@ from configparser import ConfigParser
 import hpc.autoscale.hpclogging as logging
 class GuacConnectionStates:
     Queued = "queued"
-    Ready = "ready"
-    Assigned = "assigned"
-    Released = "released"
+    Running = "running"
+    Completed = "completed"
 
 class GuacConnectionAttributes:
     Status = "status"
@@ -52,7 +51,7 @@ class GuacDatabase():
         """
         Get active connections
         """
-        return self.get_connections(GuacConnectionStates.Assigned)
+        return self.get_connections(GuacConnectionStates.Running)
 
     def get_connections(self, state: Optional[GuacConnectionStates] = None) -> List[Dict]:
         """
@@ -115,6 +114,15 @@ class GuacDatabase():
         self.cursor.execute(sql, (connection_id,))
         return self.cursor.fetchall()
 
+    def get_connection_by_name(self, connection_name: str) -> Dict:
+        """
+        Get a connection from it's name
+        """
+        self.cursor = self.connection.cursor()
+        sql = "SELECT connection_id, connection_name FROM guacamole_connection where connection_name=%s"
+        self.cursor.execute(sql, (connection_name,))
+        return self.cursor.fetchall()
+
     def assign_connection_to_host(self, connection_id: int, hostname: str) -> None:
         """
         Assign a connection to a host
@@ -175,7 +183,12 @@ class GuacDatabase():
                 sql = "select entity_id from guacamole_entity where type = 'USER' and name=%s"
                 self.cursor.execute(sql, (username,))
                 records = self.cursor.fetchall()
-                entity_id = records[0][0]
+                if len(records) == 0:
+                    sql = "insert into guacamole_entity (type, name) values ('USER', %s)"
+                    self.cursor.execute(sql, (username,))
+                    entity_id = self.cursor.lastrowid
+                else:
+                    entity_id = records[0][0]
 
                 sql = "insert into guacamole_connection_permission (connection_id, entity_id, permission) values (%s, %s, 'READ')"
                 self.cursor.execute(sql, (connection_id, entity_id))
