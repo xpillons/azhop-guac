@@ -69,8 +69,13 @@ def process_spool_dir(
 
                 # Delete connection
                 elif data["command"] == "delete":
-                    _logger.info("Delete connection %s for user %s", data["connection_id"], user)
-                    guacdb.delete_connection(data["connection_id"], user)
+                    record = guacdb.get_connection_by_name(connection_name)
+                    if len(record) == 0:
+                        _logger.info("Connection %s does not exist, skipping", connection_name)
+                        continue
+                    connection_id = record[0][0]
+                    _logger.info("Delete connection %s for user %s", connection_id, user)
+                    guacdb.delete_connection(connection_id, user)
                     delete_status(connection_name)
                 # Unknown command
                 else:
