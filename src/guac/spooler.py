@@ -13,6 +13,7 @@ from guac.database import GuacDatabase, GuacConnectionStates, GuacConnectionAttr
 _spool_dir="/anfhome/guac-spool"
 _exit_code = 0
 _credential = None
+_logger = None
 
 _KVUri = ""
 
@@ -33,7 +34,7 @@ def process_spool_dir(
     global _exit_code
     global _spool_dir
 
-    logging.info("Processing spool directory %s", _spool_dir)
+    _logger.info("Processing spool directory %s", _spool_dir)
     guacdb = GuacDatabase(config["guac"])
 
     # list all files in spool dir
@@ -43,25 +44,25 @@ def process_spool_dir(
     for filename in os.listdir(command_dir):
         if filename.endswith(".json"):
             full_filename = os.path.join(command_dir, filename)
-            logging.info("Processing file %s", full_filename)
+            _logger.info("Processing file %s", full_filename)
             with open(full_filename) as f:
                 data = json.load(f)
                 connection_name = os.path.splitext(filename)[0]
 
                 # Create a new connection
                 if data["command"] == "create":
-                    logging.info("Processing command %s", data["command"])
+                    _logger.info("Processing command %s", data["command"])
                     connection_id = guacdb.create_new_connection(connection_name, data["user"], get_user_password(data["user"]), data["domain"], data["queue"])
                     update_status_file(connection_name, str(connection_id), GuacConnectionStates.Queued)
 
                 # Delete connection
                 elif data["command"] == "delete":
-                    logging.info("Processing command %s", data["command"])
+                    _logger.info("Processing command %s", data["command"])
                     guacdb.delete_connection(data["connection_id"], data["user"])
                     delete_status(connection_name)
                 # Unknown command
                 else:
-                    logging.error("Unknown command %s", data["command"])
+                    _logger.error("Unknown command %s", data["command"])
                     _exit_code = 1
                 os.remove(full_filename)
 
@@ -105,7 +106,7 @@ def update_status(
     global _exit_code
     global _spool_dir
 
-    logging.info("Update status")
+    _logger.info("Update status")
     guacdb = GuacDatabase(config["guac"])
     #TODO : Add garbage collection of status files. Remove status files that are not in the database.
 
@@ -124,6 +125,7 @@ def main() -> int:
     global _spool_dir
     global _credential
     global _KVUri
+    global _logger
 
     args = parser.parse_args()
     config_path = os.path.expanduser(args.config)
@@ -138,6 +140,8 @@ def main() -> int:
     keyVaultName = config["guac"]["vaultname"]
     _KVUri = f"https://{keyVaultName}.vault.azure.net"
 
+    logging.initialize_logging(config)
+    _logger = logging.getLogger("guac_spooler")
     _spool_dir = config["guac"]["spool_dir"]
     process_spool_dir(config)
     update_status(config)
