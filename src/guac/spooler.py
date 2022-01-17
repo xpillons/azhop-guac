@@ -65,7 +65,7 @@ def process_spool_dir(
                         _exit_code = 1
                         continue
                     connection_id = guacdb.create_new_connection(connection_name, user, password, _domain, data["queue"])
-                    update_status_file(connection_name, str(connection_id), GuacConnectionStates.Queued, user, data["queue"])
+                    update_status_file(connection_name, str(connection_id), GuacConnectionStates.Queued, user, queuename=data["queue"], jobname=data["queue"])
 
                 # Delete connection
                 elif data["command"] == "delete":
@@ -107,7 +107,7 @@ def delete_status(connection_name: int) -> None:
     if os.path.exists(status_filename):
         os.remove(status_filename)
 
-def update_status_file(connection_name: str, connection_id: str, status: str, username: str, jobname: Optional[str] = "job", hostname: Optional[str] = "") -> None:
+def update_status_file(connection_name: str, connection_id: str, status: str, username: str, queuename: str, jobname: Optional[str] = "job", hostname: Optional[str] = "unknown") -> None:
     global _exit_code
     global _spool_dir
 
@@ -116,12 +116,16 @@ def update_status_file(connection_name: str, connection_id: str, status: str, us
     if not os.path.exists(status_dir):
         os.makedirs(status_dir)
 
+    if status == GuacConnectionStates.Queued:
+        hostname = "unknown"
+
     status_filename = os.path.join(status_dir, "{}.json".format(connection_name))
     with open(status_filename, "w") as f:
         f.write("{")
         f.write("\"status\": \"{}\"".format(status))
         f.write(",\"connection_id\": \"{}\"".format(connection_id))
         f.write(",\"user\": \"{}\"".format(username))
+        f.write(",\"queuename\": \"{}\"".format(queuename))
         f.write(",\"jobname\": \"{}\"".format(jobname))
         f.write(",\"hostname\": \"{}\"".format(hostname))
         f.write("}")
@@ -139,7 +143,7 @@ def update_status(
     response: Dict = guacdb.get_connections()
 
     for record in response:
-        update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], jobname=record["nodearray"], hostname=record["hostname"], username=record["username"])
+        update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], queuename=record["nodearray"], jobname=record["nodearray"], hostname=record["hostname"], username=record["username"])
 
 
 def main() -> int:
