@@ -1,4 +1,4 @@
-import os, sys, json
+import os, sys, json, base64
 from argparse import ArgumentParser
 from typing import Dict, Any, Optional
 from pathlib import Path
@@ -119,6 +119,10 @@ def update_status_file(connection_name: str, connection_id: str, status: str, us
     if status == GuacConnectionStates.Queued:
         hostname = "unknown"
 
+    data = "{}\0c\0mysql".format(connection_id)
+    encodedBytes = base64.b64encode(data.encode("utf-8"))
+    client_id = str(encodedBytes, "utf-8")
+
     status_filename = os.path.join(status_dir, "{}.json".format(connection_name))
     with open(status_filename, "w") as f:
         f.write("{")
@@ -128,6 +132,7 @@ def update_status_file(connection_name: str, connection_id: str, status: str, us
         f.write(",\"queuename\": \"{}\"".format(queuename))
         f.write(",\"jobname\": \"{}\"".format(jobname))
         f.write(",\"hostname\": \"{}\"".format(hostname))
+        f.write(",\"client_id\": \"{}\"".format(client_id))
         f.write("}")
 
 def update_status(
