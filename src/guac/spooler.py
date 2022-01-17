@@ -124,6 +124,7 @@ def update_status_file(connection_name: str, connection_id: str, status: str, us
     client_id = str(encodedBytes, "utf-8")
 
     status_filename = os.path.join(status_dir, "{}.json".format(connection_name))
+    _logger.info("Writing connection status file %s", status_filename)
     with open(status_filename, "w") as f:
         f.write("{")
         f.write("\"status\": \"{}\"".format(status))
@@ -141,7 +142,7 @@ def update_status(
     global _exit_code
     global _spool_dir
 
-    _logger.info("Update status")
+    _logger.info("Updating connections status")
     guacdb = GuacDatabase(config["guac"])
     #TODO : Add garbage collection of status files. Remove status files that are not in the database.
 
