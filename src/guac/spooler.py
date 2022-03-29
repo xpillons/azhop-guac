@@ -18,6 +18,57 @@ _logger = None
 _domain = "hpc.azure"
 _KVUri = ""
 
+
+def process_file(config, full_filename):
+    _logger.info("Processing file %s", full_filename)
+    filename = os.path.basename(full_filename)
+    with open(full_filename) as f:
+        try:
+            data = json.load(f)
+        except:
+            _logger.warning("Failed parse command, deleting file")
+            os.remove(full_filename)
+            return
+
+        path = Path(full_filename)
+        connection_name = os.path.splitext(filename)[0]
+        user = path.owner()
+        # Create a new connection
+        if data["command"] == "create":
+            guacdb = GuacDatabase(config["guac"])
+            _logger.info("Create connection to user %s on nodearray %s", user, data["queue"])
+            # Check if the connection already exists
+            record = guacdb.get_connection_by_name(connection_name)
+            if len(record) == 0:
+                password = get_user_password(user)
+                if password is not None:
+                    connection_id = guacdb.create_new_connection(connection_name, user, password, _domain, data["queue"])
+                    update_status_file(connection_name, str(connection_id), GuacConnectionStates.Queued, user, queuename=data["queue"], jobname=data["queue"])
+                else:
+                    _logger.error("User %s password not found", user)
+            else:
+                _logger.info("Connection %s already exists, skipping", connection_name)
+
+        # Delete connection
+        elif data["command"] == "delete":
+            guacdb = GuacDatabase(config["guac"])
+            record = guacdb.get_connection_by_name(connection_name)
+            if len(record) > 0:
+                connection_id = record[0][0]
+                _logger.info("Delete connection %s for user %s", connection_id, user)
+                guacdb.delete_connection(connection_id, user)
+                delete_status(connection_name)
+            else:
+                _logger.info("Connection %s does not exist, skipping", connection_name)
+                
+            
+        # Unknown command
+        else:
+            _logger.error("Unknown command %s", data["command"])
+
+        os.remove(full_filename)
+
+
 #
 # for each files in the $SPOOL_DIR/commands directory
 #    Read the file
@@ -36,52 +87,13 @@ def process_spool_dir(
     global _spool_dir
 
     _logger.info("Processing spool directory %s", _spool_dir)
-    guacdb = GuacDatabase(config["guac"])
 
     # list all files in spool dir
     command_dir = os.path.join(_spool_dir, "commands")
     if not os.path.exists(command_dir):
         os.makedirs(command_dir)
     for filename in os.listdir(command_dir):
-        if filename.endswith(".json"):
-            full_filename = os.path.join(command_dir, filename)
-            path = Path(full_filename)
-            _logger.info("Processing file %s", full_filename)
-            with open(full_filename) as f:
-                data = json.load(f)
-                connection_name = os.path.splitext(filename)[0]
-                user = path.owner()
-                # Create a new connection
-                if data["command"] == "create":
-                    _logger.info("Create connection to user %s on nodearray %s", user, data["queue"])
-                    # Check if the connection already exists
-                    record = guacdb.get_connection_by_name(connection_name)
-                    if len(record) > 0:
-                        _logger.info("Connection %s already exists, skipping", connection_name)
-                        continue
-                    password = get_user_password(user)
-                    if password is None:
-                        _logger.error("User %s password not found", user)
-                        _exit_code = 1
-                        continue
-                    connection_id = guacdb.create_new_connection(connection_name, user, password, _domain, data["queue"])
-                    update_status_file(connection_name, str(connection_id), GuacConnectionStates.Queued, user, queuename=data["queue"], jobname=data["queue"])
-
-                # Delete connection
-                elif data["command"] == "delete":
-                    record = guacdb.get_connection_by_name(connection_name)
-                    if len(record) == 0:
-                        _logger.info("Connection %s does not exist, skipping", connection_name)
-                        continue
-                    connection_id = record[0][0]
-                    _logger.info("Delete connection %s for user %s", connection_id, user)
-                    guacdb.delete_connection(connection_id, user)
-                    delete_status(connection_name)
-                # Unknown command
-                else:
-                    _logger.error("Unknown command %s", data["command"])
-                    _exit_code = 1
-                os.remove(full_filename)
+        process_file(config, os.path.join(command_dir, filename))
 
 # Retrieve user password from the keyvault
 def get_user_password(username: str) -> str:
@@ -98,7 +110,7 @@ def get_user_password(username: str) -> str:
 
     return secret
 
-def delete_status(connection_name: int) -> None:
+def delete_status(connection_name: str) -> None:
     global _exit_code
     global _spool_dir
 
@@ -143,14 +155,41 @@ def update_status(
     global _spool_dir
 
     _logger.info("Updating connections status")
+
+    status_dir = os.path.join(_spool_dir, "status")
+    old_status_files = set([f for f in os.listdir(status_dir) if os.path.isfile(os.path.join(status_dir, f))])
+    
     guacdb = GuacDatabase(config["guac"])
     #TODO : Add garbage collection of status files. Remove status files that are not in the database.
 
     response: Dict = guacdb.get_connections()
 
+    status_files = set()
     for record in response:
+        status_files.add(str(record["connection_name"])+".json")
         update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], queuename=record["nodearray"], jobname=record["nodearray"], hostname=record["hostname"], username=record["username"])
+    
+    print("Old status files:")
+    print(old_status_files)
+    print("New status files:")
+    print(status_files)
+    for old_file in old_status_files.difference(status_files):
+        print("Deleting file: "+old_file)
+        os.remove(os.path.join(status_dir, old_file))
 
+def init_spooler(config):
+    global _spool_dir
+    global _credential
+    global _KVUri
+    global _logger
+
+    _credential = DefaultAzureCredential()
+    keyVaultName = config["guac"]["vaultname"]
+    _KVUri = f"https://{keyVaultName}.vault.azure.net"
+
+    logging.initialize_logging(config)
+    _logger = logging.getLogger("guac_spooler")
+    _spool_dir = config["guac"]["spool_dir"]
 
 def main() -> int:
     parser = ArgumentParser()
@@ -171,13 +210,8 @@ def main() -> int:
 
     config = json_load(config_path)
 
-    _credential = DefaultAzureCredential()
-    keyVaultName = config["guac"]["vaultname"]
-    _KVUri = f"https://{keyVaultName}.vault.azure.net"
+    init_spooler()
 
-    logging.initialize_logging(config)
-    _logger = logging.getLogger("guac_spooler")
-    _spool_dir = config["guac"]["spool_dir"]
     # TODO : Dynamically retrieve the domain 
     process_spool_dir(config)
     update_status(config)
