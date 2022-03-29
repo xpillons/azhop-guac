@@ -103,25 +103,31 @@ from ${SCHEDULER}.spooler import main
 main()
 EOF
 chmod +x $VENV/bin/azguac-spooler
-
 ln -sf $VENV/bin/azguac-spooler /usr/local/bin/
 echo "'azguac-spooler' installed. A symbolic link was made to /usr/local/bin/azguac-spooler"
 
-# Remove any autoscale cron entries
-crontab -l | grep -v '/usr/local/bin/azguac autoscale'  | crontab -
-crontab -l | grep -v '/usr/local/bin/azguac-spooler'  | crontab -
+cat > $VENV/bin/azguac-daemon <<EOF
+#!$VENV/bin/python
 
-# Add autoscale cron entry if requested
-crontab -l > /tmp/current_crontab
-if [ $DISABLE_CRON == 0 ]; then
-    crontab -l | grep -q "/usr/local/bin/azguac autoscale"
-    if [ $? != 0 ]; then
-        echo "* * * * * /usr/local/bin/azguac autoscale -c /opt/cycle/${SCHEDULER}/autoscale.json" >> /tmp/current_crontab
-    fi
-    crontab -l | grep -q "/usr/local/bin/azguac-spooler"
-    if [ $? != 0 ]; then
-        echo "* * * * * /usr/local/bin/azguac-spooler -c /opt/cycle/${SCHEDULER}/autoscale.json" >> /tmp/current_crontab
-    fi
-    crontab /tmp/current_crontab
-fi
-rm -f /tmp/current_crontab
+from ${SCHEDULER}.daemon import main
+main()
+EOF
+chmod +x $VENV/bin/azguac-daemon
+ln -sf $VENV/bin/azguac-daemon /usr/local/bin/
+echo "'azguac-daemon' installed. A symbolic link was made to /usr/local/bin/azguac-daemon"
+
+cat > /etc/systemd/system/guacspoold.service <<EOF
+[Unit]
+Description=The spooler for autoscaling guacamole instances
+After=syslog.target network.target remote-fs.target nss-lookup.target
+[Service]
+Type=simple
+PIDFile=/run/guacspoold.pid
+ExecStart=/usr/local/bin/azguac-daemon -c /opt/cycle/${SCHEDULER}/autoscale.json
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable guacspoold.service
+systemctl start guacspoold.service
