@@ -157,6 +157,9 @@ def update_status(
     _logger.info("Updating connections status")
 
     status_dir = os.path.join(_spool_dir, "status")
+    if not os.path.exists(status_dir):
+        os.makedirs(status_dir)
+
     old_status_files = set([f for f in os.listdir(status_dir) if os.path.isfile(os.path.join(status_dir, f))])
     
     guacdb = GuacDatabase(config["guac"])
