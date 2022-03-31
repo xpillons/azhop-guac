@@ -34,7 +34,7 @@ class Handler(FileSystemEventHandler):
 
 
 def main() -> int:
-    logging.initialize_logging()
+#    logging.initialize_logging()
 
     ctx_handler = register_result_handler(DefaultContextHandler("[initialization]"))
 
@@ -50,6 +50,7 @@ def main() -> int:
         return 1
 
     config = json_load(config_path)
+    logging.initialize_logging(config)
 
     init_spooler(config)
 

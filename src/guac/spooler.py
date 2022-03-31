@@ -210,7 +210,7 @@ def main() -> int:
 
     config = json_load(config_path)
 
-    init_spooler()
+    init_spooler(config)
 
     # TODO : Dynamically retrieve the domain 
     process_spool_dir(config)
