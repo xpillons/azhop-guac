@@ -169,12 +169,12 @@ def update_status(
         status_files.add(str(record["connection_name"])+".json")
         update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], queuename=record["nodearray"], jobname=record["nodearray"], hostname=record["hostname"], username=record["username"])
     
-    print("Old status files:")
-    print(old_status_files)
-    print("New status files:")
-    print(status_files)
+    _logger.info("Old status files:")
+    _logger.info(old_status_files)
+    _logger.info("New status files:")
+    _logger.info(status_files)
     for old_file in old_status_files.difference(status_files):
-        print("Deleting file: "+old_file)
+        _logger.info("Deleting file: "+old_file)
         os.remove(os.path.join(status_dir, old_file))
 
 def init_spooler(config):
