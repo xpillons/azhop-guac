@@ -61,20 +61,19 @@ def main() -> int:
     observer.schedule(event_handler, os.path.join(config["guac"]["spool_dir"], "commands"))
     observer.start()
 
-    try:
-        while True:
-            mutex.acquire()
-            try:
-                autoscale_guac(config, ctx_handler=ctx_handler)
-                update_status(config)
-            finally:
-                mutex.release()
-            time.sleep(10)
-    except Exception as e:
-        observer.stop()
-        logging.exception(str(e))
+    while True:
+        mutex.acquire()
+        try:
+            autoscale_guac(config, ctx_handler=ctx_handler)
+            update_status(config)
+        except Exception as e:
+            logging.exception(str(e))
+        finally:
+            mutex.release()
+        time.sleep(10)
 
-    observer.join()
+    #    observer.stop()
+    #    observer.join()
 
     return 0
 
