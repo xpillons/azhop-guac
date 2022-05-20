@@ -187,6 +187,9 @@ class GuacDatabase():
                     sql = "insert into guacamole_entity (type, name) values ('USER', %s)"
                     self.cursor.execute(sql, (username,))
                     entity_id = self.cursor.lastrowid
+                    # Adding this record to maintain the entity integrity and because the quacamole site try to insert a full entity record for a user
+                    sql = "insert into guacamole_user (entity_id, password_hash, password_salt, password_date) values (%s, 'foo', 'foo', now())"
+                    self.cursor.execute(sql, (entity_id,))
                 else:
                     entity_id = records[0][0]
 
