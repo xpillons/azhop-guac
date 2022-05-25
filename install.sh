@@ -78,6 +78,8 @@ source $VENV/bin/activate
 
 pip install -r requirements.txt
 rm -f packages/zipp*.whl
+rm -f packages/typing_extensions*.whl
+
 pip install packages/*
 
 echo "Copy logging configuration file"
