@@ -43,9 +43,12 @@ def process_file(config, full_filename):
                 password = get_user_password(user)
                 if password is not None:
                     connection_id = guacdb.create_new_connection(connection_name, user, password, _domain, data["queue"])
-                    update_status_file(connection_name, str(connection_id), GuacConnectionStates.Queued, user, queuename=data["queue"], jobname=data["queue"])
+                    status = GuacConnectionStates.Queued
                 else:
+                    status = GuacConnectionStates.Failed
+                    connection_id = -1
                     _logger.error("User %s password not found", user)
+                update_status_file(connection_name, str(connection_id), status, user, queuename=data["queue"], jobname=data["queue"])
             else:
                 _logger.info("Connection %s already exists, skipping", connection_name)
 
@@ -57,11 +60,10 @@ def process_file(config, full_filename):
                 connection_id = record[0][0]
                 _logger.info("Delete connection %s for user %s", connection_id, user)
                 guacdb.delete_connection(connection_id, user)
-                delete_status(connection_name)
             else:
                 _logger.info("Connection %s does not exist, skipping", connection_name)
-                
-            
+            delete_status(connection_name)
+
         # Unknown command
         else:
             _logger.error("Unknown command %s", data["command"])
