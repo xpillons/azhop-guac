@@ -7,6 +7,7 @@ class GuacConnectionStates:
     Queued = "queued"
     Running = "running"
     Completed = "completed"
+    Failed = "failed"
 
 class GuacConnectionAttributes:
     Status = "status"
