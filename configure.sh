@@ -1,12 +1,12 @@
 #!/bin/bash
+SCALELIB_VERSION=0.2.9
 sudo apt-get install libncurses5-dev libncursesw5-dev
 
 mkdir -p libs
 mkdir -p modules/cyclecloud-scalelib
+wget https://github.com/Azure/cyclecloud-scalelib/archive/refs/tags/$SCALELIB_VERSION.tar.gz -O modules/cyclecloud-scalelib-$SCALELIB_VERSION.tar.gz
 
-wget https://github.com/Azure/cyclecloud-scalelib/archive/refs/tags/0.2.7.tar.gz -O modules/cyclecloud-scalelib-0.2.7.tar.gz
-
-tar -xvf modules/cyclecloud-scalelib-0.2.7.tar.gz -C modules/cyclecloud-scalelib --strip-components 1
+tar -xvf modules/cyclecloud-scalelib-$SCALELIB_VERSION.tar.gz -C modules/cyclecloud-scalelib --strip-components 1
 
 wget https://github.com/Azure/cyclecloud-slurm/releases/download/2.5.0/cyclecloud_api-8.1.0-py2.py3-none-any.whl -O libs/cyclecloud_api-8.1.0-py2.py3-none-any.whl
 
