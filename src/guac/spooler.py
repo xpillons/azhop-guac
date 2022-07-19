@@ -104,7 +104,7 @@ def get_user_password(username: str) -> str:
 
     try:
         client = SecretClient(vault_url=_KVUri, credential=_credential)
-        retrieved_secret = client.get_secret(f"{username}-password")
+        retrieved_secret = client.get_secret(f"{username.replace('.','')}-password")
         secret = retrieved_secret.value
     except Exception as e:
         _logger.error("Secret %s-password not found", username)
