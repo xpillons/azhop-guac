@@ -159,8 +159,11 @@ class GuacDriver(SchedulerDriver):
                         continue
 
                     self.guacdb.assign_connection_to_host(job_id, node.hostname)
-                    self.guacdb.update_connection_status(job_id, GuacConnectionStates.Running)
-                    self.guacdb.update_connection_nodeid(job_id, node.resources["ccnodeid"])
+                    node_status = getattr(node, "state")
+                    # TODO : add node status in the connection status
+                    if node_status == "Ready":
+                        self.guacdb.update_connection_status(job_id, GuacConnectionStates.Running)
+                        self.guacdb.update_connection_nodeid(job_id, node.resources["ccnodeid"])
                     ret.append(node)
             except Exception as e:
                 logging.error(
