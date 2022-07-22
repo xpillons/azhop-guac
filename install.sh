@@ -78,6 +78,8 @@ source $VENV/bin/activate
 
 pip install -r requirements.txt
 rm -f packages/zipp*.whl
+rm -f packages/requests*.whl
+rm -r packages/charset_normalizer*.whl
 rm -f packages/typing_extensions*.whl
 
 pip install packages/*
