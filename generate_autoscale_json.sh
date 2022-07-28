@@ -13,13 +13,14 @@ export PATH=$PATH:/root/bin
 set -e
 
 INSTALLDIR=/opt/cycle/guac
+SPOOLDIR=/anfhome/guac_spool
 USERNAME=
 PASSWORD=
 URL=
 CLUSTER_NAME=
 
 function usage() {
-    echo Usage: $0 --username username --password password --url https://fqdn:port --cluster-name cluster_name [--install-dir /opt/cycle/guac]
+    echo Usage: $0 --username username --password password --url https://fqdn:port --cluster-name cluster_name --vaultname vault_name [--install-dir /opt/cycle/guac --spool-dir /anfhome/guac_spool]
     exit 2
 }
 
@@ -46,6 +47,10 @@ while (( "$#" )); do
             INSTALLDIR=$2
             shift 2
             ;;
+        --spool-dir)
+            SPOOLDIR=$2
+            shift 2
+            ;;
         --vaultname)
             VAULTNAME=$2
             shift 2
@@ -69,6 +74,7 @@ if [ "$PASSWORD" == "" ]; then usage; fi
 if [ "$URL" == "" ]; then usage; fi
 if [ "$CLUSTER_NAME" == "" ]; then usage; fi
 if [ "$INSTALLDIR" == "" ]; then usage; fi
+if [ "$SPOOLDIR" == "" ]; then usage; fi
 
 if [ -e $INSTALLDIR/autoscale.json ]; then
     if [ ! -e $INSTALLDIR/backups ]; then
@@ -93,7 +99,6 @@ temp_autoscale=$TEMP/autoscale.json.$(date +%s)
                 # --lock-file    $INSTALLDIR/scalelib.lock \
                 # --log-config   $INSTALLDIR/logging.conf \
                 # --guac-config /etc/guacamole/guacamole.properties \
-                # --guac-spool /anfhome/guac-spool \
 
 (/usr/local/bin/azguac initconfig --cluster-name ${CLUSTER_NAME} \
                 --username     ${USERNAME} \
@@ -102,6 +107,7 @@ temp_autoscale=$TEMP/autoscale.json.$(date +%s)
                 --idle-timeout 120 \
                 --boot-timeout 1800 \
                 --guac-vaultname $VAULTNAME \
+                --guac-spool $SPOOLDIR \
                 > $temp_autoscale && mv $temp_autoscale $INSTALLDIR/autoscale.json ) || (rm -f $temp_autoscale.json; exit 1)
 
 echo testing that we can connect to CycleCloud...
