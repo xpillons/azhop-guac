@@ -20,7 +20,7 @@ URL=
 CLUSTER_NAME=
 
 function usage() {
-    echo Usage: $0 --username username --password password --url https://fqdn:port --cluster-name cluster_name --vaultname vault_name [--install-dir /opt/cycle/guac --spool-dir /anfhome/guac_spool]
+    echo Usage: $0 --username username --password password --url https://fqdn:port --cluster-name cluster_name --vaultname vault_name [--install-dir /opt/cycle/guac --spool-dir /anfhome/guac-spool]
     exit 2
 }
 
