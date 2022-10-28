@@ -87,6 +87,9 @@ pip install packages/*
 echo "Copy logging configuration file"
 cp ./conf/logging.conf /opt/cycle/${SCHEDULER}/logging.conf
 
+echo "Copy helper scripts"
+cp ./delete_session.sh /opt/cycle/${SCHEDULER}/delete_session.sh
+
 cat > $VENV/bin/azguac <<EOF
 #!$VENV/bin/python
 
