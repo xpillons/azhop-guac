@@ -1,6 +1,6 @@
 
 from typing import Any, Dict, List, Optional
-import mysql.connector
+import mariadb
 from configparser import ConfigParser
 import hpc.autoscale.hpclogging as logging
 class GuacConnectionStates:
@@ -27,17 +27,24 @@ class GuacDatabase():
         self.cursor = None
         self.initialize()
 
+    def __del__ (
+        self
+    ) -> None:
+        if self.cursor:
+            self.cursor.close()
+
     def initialize(self) -> None:
         parser = ConfigParser()
         # This is a trick to get the config file to be parsed as a section
         with open(self.config["config_file"]) as stream:
             parser.read_string("[guac]\n" + stream.read()) 
         guac_config = parser["guac"]
-        self.connection = mysql.connector.connect(
+        self.connection = mariadb.connect(
             host=guac_config["mysql-hostname"],
             user=guac_config["mysql-username"],
             password=guac_config["mysql-password"],
-            database=guac_config["mysql-database"])
+            database=guac_config["mysql-database"],
+            ssl_ca=guac_config["mysql-ssl_ca"])
 
     def get_queued_connections(self) -> Dict:
         """
