@@ -1,5 +1,5 @@
 #!/bin/bash
-SCALELIB_VERSION=0.2.9
+SCALELIB_VERSION=0.2.12
 sudo apt-get install libncurses5-dev libncursesw5-dev
 
 mkdir -p libs
