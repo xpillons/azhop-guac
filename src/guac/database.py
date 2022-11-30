@@ -32,6 +32,8 @@ class GuacDatabase():
     ) -> None:
         if self.cursor:
             self.cursor.close()
+        if self.connection:
+            self.connection.close()
 
     def initialize(self) -> None:
         parser = ConfigParser()
