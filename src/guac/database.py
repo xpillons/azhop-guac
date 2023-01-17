@@ -14,8 +14,8 @@ class GuacConnectionAttributes:
     NodeArray = "nodearray"
     NodeId = "nodeid"
     Walltime = "walltime"
-    StartTime = "startime"
-    WalltimeUsed = "walltime_user"
+    StartTime = "starttime"
+    WalltimeUsed = "walltime_used"
 
 class GuacDatabase():
     """
@@ -204,7 +204,7 @@ class GuacDatabase():
                             (connection_id, GuacConnectionAttributes.Status, GuacConnectionStates.Queued),
                             (connection_id, GuacConnectionAttributes.NodeId, "0"),
                             (connection_id, GuacConnectionAttributes.Walltime, walltime)
-                            (connection_id, GuacConnectionAttributes.StartTime, "")
+                            (connection_id, GuacConnectionAttributes.StartTime, "0")
                             (connection_id, GuacConnectionAttributes.WalltimeUsed, "0")
                 ]
                 self.cursor.executemany(sql,values)

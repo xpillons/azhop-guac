@@ -121,7 +121,7 @@ def delete_status(connection_name: str) -> None:
     if os.path.exists(status_filename):
         os.remove(status_filename)
 
-def update_status_file(connection_name: str, connection_id: str, status: str, username: str, queuename: str, walltime: int, jobname: Optional[str] = "job", hostname: Optional[str] = "unknown", starttime: Optional[str]="") -> None:
+def update_status_file(connection_name: str, connection_id: str, status: str, username: str, queuename: str, walltime: int, jobname: Optional[str] = "job", hostname: Optional[str] = "unknown", starttime: Optional[str]="0") -> None:
     global _exit_code
     global _spool_dir
 
@@ -149,7 +149,10 @@ def update_status_file(connection_name: str, connection_id: str, status: str, us
         f.write(",\"hostname\": \"{}\"".format(hostname))
         f.write(",\"client_id\": \"{}\"".format(client_id))
         f.write(",\"walltime\": \"{}\"".format(walltime))
-        f.write(",\"startime\": \"{}\"".format(datetime.fromtimestamp(int(starttime))))
+        if starttime != "0":
+            f.write(",\"startime\": \"{}\"".format(datetime.fromtimestamp(int(starttime))))
+        else:
+            f.write(",\"startime\": \"0\"")
         f.write("}")
 
 def delete_session(connection_name: str, username: str) -> None:
