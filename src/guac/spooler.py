@@ -42,13 +42,13 @@ def process_file(config, full_filename):
             if len(record) == 0:
                 password = get_user_password(user)
                 if password is not None:
-                    connection_id = guacdb.create_new_connection(connection_name, user, password, _domain, data["queue"], int(data["walltime"]))
+                    connection_id = guacdb.create_new_connection(connection_name, user, password, _domain, data["queue"], data["walltime"])
                     status = GuacConnectionStates.Queued
                 else:
                     status = GuacConnectionStates.Failed
                     connection_id = -1
                     _logger.error("User %s password not found", user)
-                update_status_file(connection_name, str(connection_id), status, user, queuename=data["queue"], walltime=int(data["walltime"]), jobname=data["queue"])
+                update_status_file(connection_name, str(connection_id), status, user, queuename=data["queue"], walltime=data["walltime"], jobname=data["queue"])
             else:
                 _logger.info("Connection %s already exists, skipping", connection_name)
 
@@ -121,7 +121,7 @@ def delete_status(connection_name: str) -> None:
     if os.path.exists(status_filename):
         os.remove(status_filename)
 
-def update_status_file(connection_name: str, connection_id: str, status: str, username: str, queuename: str, walltime: int, jobname: Optional[str] = "job", hostname: Optional[str] = "unknown", starttime: Optional[str]="0") -> None:
+def update_status_file(connection_name: str, connection_id: str, status: str, username: str, queuename: str, walltime: str, jobname: Optional[str] = "job", hostname: Optional[str] = "unknown", starttime: Optional[str]="0") -> None:
     global _exit_code
     global _spool_dir
 

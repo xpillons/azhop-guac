@@ -178,7 +178,7 @@ class GuacDatabase():
         self.cursor.execute(sql, (elapsedtime, connection_id, GuacConnectionAttributes.WalltimeUsed))
         self.connection.commit()
 
-    def create_new_connection(self, connection_name: str, username: str, password: str, domain: str, nodearray: str, walltime: int) -> int:
+    def create_new_connection(self, connection_name: str, username: str, password: str, domain: str, nodearray: str, walltime: str) -> int:
         """
         Create a new connection
         """
@@ -203,8 +203,8 @@ class GuacDatabase():
                 values = [  (connection_id, GuacConnectionAttributes.NodeArray, nodearray),
                             (connection_id, GuacConnectionAttributes.Status, GuacConnectionStates.Queued),
                             (connection_id, GuacConnectionAttributes.NodeId, "0"),
-                            (connection_id, GuacConnectionAttributes.Walltime, walltime)
-                            (connection_id, GuacConnectionAttributes.StartTime, "0")
+                            (connection_id, GuacConnectionAttributes.Walltime, walltime),
+                            (connection_id, GuacConnectionAttributes.StartTime, "0"),
                             (connection_id, GuacConnectionAttributes.WalltimeUsed, "0")
                 ]
                 self.cursor.executemany(sql,values)
