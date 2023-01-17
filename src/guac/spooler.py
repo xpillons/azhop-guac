@@ -150,7 +150,7 @@ def update_status_file(connection_name: str, connection_id: str, status: str, us
         f.write(",\"client_id\": \"{}\"".format(client_id))
         f.write(",\"walltime\": \"{}\"".format(walltime))
         if starttime != "0":
-            f.write(",\"startime\": \"{}\"".format(datetime.fromtimestamp(int(starttime))))
+            f.write(",\"startime\": \"{}\"".format(int(starttime)))
         else:
             f.write(",\"startime\": \"0\"")
         f.write("}")
@@ -189,9 +189,11 @@ def update_status(
     status_files = set()
     for record in response:
         status_files.add(str(record["connection_name"])+".json")
-        update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], queuename=record["nodearray"], walltime=record["walltime"], starttime=record["starttime"], jobname=record["nodearray"], hostname=record["hostname"], username=record["username"])
-        elapsed_time = datetime.now.timestamp - datetime.fromtimestamp(int(record["starttime"]))
-        if elapsed_time > int(record["walltime"]):
+        update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], queuename=record[GuacConnectionAttributes.NodeArray], walltime=record[GuacConnectionAttributes.Walltime], starttime=record[GuacConnectionAttributes.StartTime], jobname=record[GuacConnectionAttributes.NodeArray], hostname=record["hostname"], username=record["username"])
+        now = datetime.datetime.now().timestamp()
+        start = int(record[GuacConnectionAttributes.StartTime])
+        elapsed_time = int(now - start)
+        if elapsed_time > int(record[GuacConnectionAttributes.Walltime]):
             _logger.info("Elapsed time reach for job %s - delet session", str(record["connection_id"]))
             delete_session(record["connection_name"], record["username"])
 

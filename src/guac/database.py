@@ -164,7 +164,7 @@ class GuacDatabase():
         sql = "update guacamole_connection_attribute set attribute_value=%s where connection_id=%s and attribute_name=%s"
         self.cursor.execute(sql, (status, connection_id, GuacConnectionAttributes.Status))
         if status == GuacConnectionStates.Running:
-            now = datetime.datetime.now().timestamp
+            now = int(datetime.datetime.now().timestamp())
             self.cursor.execute(sql, (now, connection_id, GuacConnectionAttributes.StartTime))
 
         self.connection.commit()
