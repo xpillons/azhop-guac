@@ -190,12 +190,14 @@ def update_status(
     for record in response:
         status_files.add(str(record["connection_name"])+".json")
         update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], queuename=record[GuacConnectionAttributes.NodeArray], walltime=record[GuacConnectionAttributes.Walltime], starttime=record[GuacConnectionAttributes.StartTime], jobname=record[GuacConnectionAttributes.NodeArray], hostname=record["hostname"], username=record["username"])
-        now = datetime.datetime.now().timestamp()
+
         start = int(record[GuacConnectionAttributes.StartTime])
-        elapsed_time = int(now - start)
-        if elapsed_time > int(record[GuacConnectionAttributes.Walltime]):
-            _logger.info("Elapsed time reach for job %s - delet session", str(record["connection_id"]))
-            delete_session(record["connection_name"], record["username"])
+        if start > 0:
+            now = datetime.datetime.now().timestamp()
+            elapsed_time = int(now - start)
+            if elapsed_time > int(record[GuacConnectionAttributes.Walltime]):
+                _logger.info("Elapsed time (%s) reach for job %s - delete session", str(elapsed_time), str(record["connection_id"]))
+                delete_session(record["connection_name"], record["username"])
 
     _logger.info("Old status files:")
     _logger.info(old_status_files)
