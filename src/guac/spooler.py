@@ -12,6 +12,7 @@ from azure.identity import DefaultAzureCredential, _credentials
 from guac.database import GuacDatabase, GuacConnectionStates, GuacConnectionAttributes
 
 _spool_dir="/anfhome/guac-spool"
+_install_path="/opt/cycle/guac"
 _exit_code = 0
 _credential = None
 _logger = None
@@ -150,22 +151,29 @@ def update_status_file(connection_name: str, connection_id: str, status: str, us
         f.write(",\"client_id\": \"{}\"".format(client_id))
         f.write(",\"walltime\": \"{}\"".format(walltime))
         if starttime != "0":
-            f.write(",\"startime\": \"{}\"".format(int(starttime)))
+            f.write(",\"starttime\": \"{}\"".format(int(starttime)))
         else:
-            f.write(",\"startime\": \"0\"")
+            f.write(",\"starttime\": \"0\"")
         f.write("}")
 
 def delete_session(connection_name: str, username: str) -> None:
-    command_dir = os.path.join(_spool_dir, "commands")
-    filename = os.path.join(command_dir, "{}.json".format(connection_name))
+    _logger.info("Calling delete_session -s %s -u %s", connection_name, username)
+    exit_status = os.system("{}/delete_session.sh -s {} -u {}".format(_install_path, connection_name, username))
 
-    _logger.info("Writing delete file %s", filename)
-    with open(filename, "w") as f:
-        f.write("{ \"command\": \"delete\" }")
+    # Check the return value
+    if exit_status != 0:
+        _logger.info("delete_session call has failed")
+
+    # command_dir = os.path.join(_spool_dir, "commands")
+    # filename = os.path.join(command_dir, "{}.json".format(connection_name))
+
+    # _logger.info("Writing delete file %s", filename)
+    # with open(filename, "w") as f:
+    #     f.write("{ \"command\": \"delete\" }")
     
-    uid = pwd.getpwnam(username).pw_uid
-    _logger.info("Update file %s with uid", filename, username)
-    os.chown(filename, uid)
+    # uid = pwd.getpwnam(username).pw_uid
+    # _logger.info("Update file %s with uid", filename, username)
+    # os.chown(filename, uid)
 
 def update_status(
         config: Dict[str, Any],
