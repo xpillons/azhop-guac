@@ -1,6 +1,6 @@
 
 from typing import Any, Dict, List, Optional
-import mariadb
+import mariadb, datetime
 from configparser import ConfigParser
 import hpc.autoscale.hpclogging as logging
 class GuacConnectionStates:
@@ -13,6 +13,9 @@ class GuacConnectionAttributes:
     Status = "status"
     NodeArray = "nodearray"
     NodeId = "nodeid"
+    Walltime = "walltime"
+    StartTime = "starttime"
+    WalltimeUsed = "walltime_used"
 
 class GuacDatabase():
     """
@@ -160,9 +163,22 @@ class GuacDatabase():
         self.cursor = self.connection.cursor()
         sql = "update guacamole_connection_attribute set attribute_value=%s where connection_id=%s and attribute_name=%s"
         self.cursor.execute(sql, (status, connection_id, GuacConnectionAttributes.Status))
+        if status == GuacConnectionStates.Running:
+            now = int(datetime.datetime.now().timestamp())
+            self.cursor.execute(sql, (now, connection_id, GuacConnectionAttributes.StartTime))
+
         self.connection.commit()
 
-    def create_new_connection(self, connection_name: str, username: str, password: str, domain: str, nodearray: str) -> int:
+    def update_walltime_used(self, connection_id: int, elapsedtime: int) -> None:
+        """
+        Update the walltime used of a connection
+        """
+        self.cursor = self.connection.cursor()
+        sql = "update guacamole_connection_attribute set attribute_value=%s where connection_id=%s and attribute_name=%s"
+        self.cursor.execute(sql, (elapsedtime, connection_id, GuacConnectionAttributes.WalltimeUsed))
+        self.connection.commit()
+
+    def create_new_connection(self, connection_name: str, username: str, password: str, domain: str, nodearray: str, walltime: str) -> int:
         """
         Create a new connection
         """
@@ -184,9 +200,12 @@ class GuacDatabase():
                 self.cursor.executemany(sql,values)
 
                 sql = "insert into guacamole_connection_attribute (connection_id, attribute_name, attribute_value) values (%s, %s, %s)"
-                values = [  (connection_id, "nodearray", nodearray),
-                            (connection_id, "status", GuacConnectionStates.Queued),
-                            (connection_id, "nodeid", "0")
+                values = [  (connection_id, GuacConnectionAttributes.NodeArray, nodearray),
+                            (connection_id, GuacConnectionAttributes.Status, GuacConnectionStates.Queued),
+                            (connection_id, GuacConnectionAttributes.NodeId, "0"),
+                            (connection_id, GuacConnectionAttributes.Walltime, walltime),
+                            (connection_id, GuacConnectionAttributes.StartTime, "0"),
+                            (connection_id, GuacConnectionAttributes.WalltimeUsed, "0")
                 ]
                 self.cursor.executemany(sql,values)
 

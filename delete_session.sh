@@ -40,4 +40,3 @@ EOF
 chown $USER_SESSION: $SPOOLER_DIR/commands/$SESSION_ID.json
 
 ls -al $SPOOLER_DIR/commands
-

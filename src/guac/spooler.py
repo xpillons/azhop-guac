@@ -1,4 +1,4 @@
-import os, sys, json, base64
+import os, sys, json, base64, datetime, pwd
 from argparse import ArgumentParser
 from typing import Dict, Any, Optional
 from pathlib import Path
@@ -12,6 +12,7 @@ from azure.identity import DefaultAzureCredential, _credentials
 from guac.database import GuacDatabase, GuacConnectionStates, GuacConnectionAttributes
 
 _spool_dir="/anfhome/guac-spool"
+_install_path="/opt/cycle/guac"
 _exit_code = 0
 _credential = None
 _logger = None
@@ -42,13 +43,13 @@ def process_file(config, full_filename):
             if len(record) == 0:
                 password = get_user_password(user)
                 if password is not None:
-                    connection_id = guacdb.create_new_connection(connection_name, user, password, _domain, data["queue"])
+                    connection_id = guacdb.create_new_connection(connection_name, user, password, _domain, data["queue"], data["walltime"])
                     status = GuacConnectionStates.Queued
                 else:
                     status = GuacConnectionStates.Failed
                     connection_id = -1
                     _logger.error("User %s password not found", user)
-                update_status_file(connection_name, str(connection_id), status, user, queuename=data["queue"], jobname=data["queue"])
+                update_status_file(connection_name, str(connection_id), status, user, queuename=data["queue"], walltime=data["walltime"], jobname=data["queue"])
             else:
                 _logger.info("Connection %s already exists, skipping", connection_name)
 
@@ -121,7 +122,7 @@ def delete_status(connection_name: str) -> None:
     if os.path.exists(status_filename):
         os.remove(status_filename)
 
-def update_status_file(connection_name: str, connection_id: str, status: str, username: str, queuename: str, jobname: Optional[str] = "job", hostname: Optional[str] = "unknown") -> None:
+def update_status_file(connection_name: str, connection_id: str, status: str, username: str, queuename: str, walltime: str, jobname: Optional[str] = "job", hostname: Optional[str] = "unknown", starttime: Optional[str]="0") -> None:
     global _exit_code
     global _spool_dir
 
@@ -148,7 +149,20 @@ def update_status_file(connection_name: str, connection_id: str, status: str, us
         f.write(",\"jobname\": \"{}\"".format(jobname))
         f.write(",\"hostname\": \"{}\"".format(hostname))
         f.write(",\"client_id\": \"{}\"".format(client_id))
+        f.write(",\"walltime\": \"{}\"".format(walltime))
+        if starttime != "0":
+            f.write(",\"starttime\": \"{}\"".format(int(starttime)))
+        else:
+            f.write(",\"starttime\": \"0\"")
         f.write("}")
+
+def delete_session(connection_name: str, username: str) -> None:
+    _logger.info("Calling delete_session -s %s -u %s", connection_name, username)
+    exit_status = os.system("{}/delete_session.sh -s {} -u {}".format(_install_path, connection_name, username))
+
+    # Check the return value
+    if exit_status != 0:
+        _logger.info("delete_session call has failed")
 
 def update_status(
         config: Dict[str, Any],
@@ -172,8 +186,16 @@ def update_status(
     status_files = set()
     for record in response:
         status_files.add(str(record["connection_name"])+".json")
-        update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], queuename=record["nodearray"], jobname=record["nodearray"], hostname=record["hostname"], username=record["username"])
-    
+        update_status_file(str(record["connection_name"]), str(record["connection_id"]), record[GuacConnectionAttributes.Status], queuename=record[GuacConnectionAttributes.NodeArray], walltime=record[GuacConnectionAttributes.Walltime], starttime=record[GuacConnectionAttributes.StartTime], jobname=record[GuacConnectionAttributes.NodeArray], hostname=record["hostname"], username=record["username"])
+
+        start = int(record[GuacConnectionAttributes.StartTime])
+        if start > 0:
+            now = datetime.datetime.now().timestamp()
+            elapsed_time = int(now - start)
+            if elapsed_time > int(record[GuacConnectionAttributes.Walltime]):
+                _logger.info("Elapsed time (%s) reach for job %s - delete session", str(elapsed_time), str(record["connection_id"]))
+                delete_session(record["connection_name"], record["username"])
+
     _logger.info("Old status files:")
     _logger.info(old_status_files)
     _logger.info("New status files:")
