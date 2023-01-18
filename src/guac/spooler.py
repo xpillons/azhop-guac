@@ -164,17 +164,6 @@ def delete_session(connection_name: str, username: str) -> None:
     if exit_status != 0:
         _logger.info("delete_session call has failed")
 
-    # command_dir = os.path.join(_spool_dir, "commands")
-    # filename = os.path.join(command_dir, "{}.json".format(connection_name))
-
-    # _logger.info("Writing delete file %s", filename)
-    # with open(filename, "w") as f:
-    #     f.write("{ \"command\": \"delete\" }")
-    
-    # uid = pwd.getpwnam(username).pw_uid
-    # _logger.info("Update file %s with uid", filename, username)
-    # os.chown(filename, uid)
-
 def update_status(
         config: Dict[str, Any],
 ) -> None:
