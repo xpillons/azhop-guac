@@ -102,7 +102,7 @@ temp_autoscale=$TEMP/autoscale.json.$(date +%s)
 
 (/usr/local/bin/azguac initconfig --cluster-name ${CLUSTER_NAME} \
                 --username     ${USERNAME} \
-                --password     ${PASSWORD} \
+                --password     "${PASSWORD}" \
                 --url          ${URL} \
                 --idle-timeout 120 \
                 --boot-timeout 1800 \
